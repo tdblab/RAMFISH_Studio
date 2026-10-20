@@ -1,0 +1,192 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RAM-FISH Fullstack Aligner</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: sans-serif; background-color: #1e1e1e; color: #fff; overflow: hidden; }
+        #controls { width: 380px; background-color: #2d2d2d; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10; display: flex; flex-direction: column; gap: 10px;}
+        #viewport { flex-grow: 1; overflow: hidden; background-color: #000; position: relative; cursor: grab; display: flex; align-items: center; justify-content: center;}
+        #viewport:active { cursor: grabbing; }
+        
+        #canvas-wrapper { position: relative; transform-origin: center center; }
+        .img-layer { position: absolute; top: 0; left: 0; transform-origin: center center; width: 100%; height: 100%; pointer-events: none;}
+        #ref-img { z-index: 1; }
+        #target-img { z-index: 2; opacity: 0.5; }
+        
+        h2 { margin: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: #4fc3f7; font-size: 1.2rem;}
+        label { display: block; margin-bottom: 3px; font-size: 0.85rem; color: #aaa; font-weight: bold;}
+        input[type="text"] { width: 100%; padding: 7px; background: #111; color: white; border: 1px solid #444; box-sizing: border-box; margin-bottom: 5px; border-radius: 3px; font-size: 0.8rem;}
+        
+        .input-group { display: flex; gap: 5px; margin-bottom: 10px;}
+        .input-group button { width: auto; padding: 7px 10px; flex-shrink: 0;}
+        
+        .slider-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;}
+        input[type="range"] { flex-grow: 1; margin-right: 10px; }
+        .num-input { width: 60px; text-align: right; background: #111; color: white; border: 1px solid #444; padding: 4px; border-radius: 3px;}
+        
+        button { width: 100%; padding: 10px; background-color: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 4px; transition: 0.2s;}
+        button:hover { background-color: #45a049; }
+        button:disabled { background-color: #555; cursor: not-allowed; color: #888;}
+        .btn-blue { background-color: #2196F3; }
+        .btn-blue:hover { background-color: #1976D2; }
+        .btn-gray { background-color: #666; }
+        .btn-gray:hover { background-color: #555; }
+        
+        #status-box { padding: 10px; background: #111; border: 1px solid #444; font-family: monospace; font-size: 0.8rem; display: none; margin-top: 10px;}
+        .loader { display: none; text-align: center; font-size: 0.9rem; color: #4fc3f7; margin-top: 5px;}
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <h2>1. Visual Setup</h2>
+        <div id="round-info" style="font-size:0.85rem; color:#ddd; line-height:1.5;"></div>
+
+        <h2 style="margin-top:15px;">2. Alignment Tools</h2>
+        <div><label>Target Opacity</label><div class="slider-container"><input type="range" id="opacity" min="0" max="1" step="0.05" value="0.5"><input type="number" id="op-num" class="num-input" value="0.5" step="0.05"></div></div>
+        <div><label>Image Scale</label><div class="slider-container"><input type="range" id="img-scale" min="0.1" max="5.0" step="0.01" value="1.0"><input type="number" id="scale-num" class="num-input" value="1.0" step="0.01"></div></div>
+        <div><label>Rotation (Deg)</label><div class="slider-container"><input type="range" id="rotation" min="-180" max="180" step="0.05" value="0"><input type="number" id="rot-num" class="num-input" value="0" step="0.05"></div></div>
+        <div><label>X Translate</label><div class="slider-container"><input type="range" id="x-trans" min="-1000" max="1000" step="0.5" value="0"><input type="number" id="x-num" class="num-input" value="0" step="0.5"></div></div>
+        <div><label>Y Translate</label><div class="slider-container"><input type="range" id="y-trans" min="-1000" max="1000" step="0.5" value="0"><input type="number" id="y-num" class="num-input" value="0" step="0.5"></div></div>
+        <div style="display:flex; align-items:center; margin-bottom: 15px;"><input type="checkbox" id="flip-h" style="margin-right:8px;"><label for="flip-h" style="margin:0;">Flip Horizontal</label></div>
+
+        <button id="process-btn" disabled>Apply Rough Alignment to Round</button>
+        <div id="status-box"></div>
+    </div>
+
+    <div id="viewport">
+        <div id="canvas-wrapper">
+            <img id="ref-img" class="img-layer">
+            <img id="target-img" class="img-layer">
+        </div>
+    </div>
+
+    <script>
+        let currentScaleRatio = 1.0;
+        let currentToken = null;
+        let pendingNonce = null;
+
+        // --- Streamlit component messaging ---
+        function toStreamlit(type, data) {
+            window.parent.postMessage(Object.assign({isStreamlitMessage: true, type: type}, data), "*");
+        }
+        function setFrameHeight(h) { toStreamlit("streamlit:setFrameHeight", {height: h}); }
+
+        function setTools(p) {
+            const pairs = [['img-scale','scale-num', p.img_scale], ['rotation','rot-num', p.rotation],
+                           ['x-trans','x-num', p.tx], ['y-trans','y-num', p.ty]];
+            pairs.forEach(([r, n, val]) => { document.getElementById(r).value = val; document.getElementById(n).value = val; });
+            document.getElementById('flip-h').checked = !!p.flip;
+            updateAlign();
+        }
+
+        // Fit the loaded images inside the viewport (mouse wheel zoom and drag pan work as before).
+        function fitToViewport(prevW, prevH) {
+            const vp = document.getElementById('viewport');
+            scale = Math.min(vp.clientWidth / prevW, vp.clientHeight / prevH) * 0.95;
+            panX = 0; panY = 0;
+            updateViewport();
+        }
+
+        // --- Load images sent by Studio ---
+        window.addEventListener("message", (event) => {
+            if (event.data.type !== "streamlit:render") return;
+            const a = event.data.args;
+            document.body.style.height = a.height + "px";
+            setFrameHeight(a.height);
+            document.getElementById('round-info').innerHTML = a.info;
+
+            if (a.token !== currentToken) {
+                currentToken = a.token;
+                const wrapper = document.getElementById('canvas-wrapper');
+                wrapper.style.width = a.target.prev_w + 'px';
+                wrapper.style.height = a.target.prev_h + 'px';
+                document.getElementById('ref-img').src = a.ref.src;
+                document.getElementById('target-img').src = a.target.src;
+
+                // Critical Math: Store the ratio of Native / UI pixels
+                currentScaleRatio = a.target.orig_w / a.target.prev_w;
+                setTools(a.initial);
+                fitToViewport(a.target.prev_w, a.target.prev_h);
+                document.getElementById('process-btn').disabled = false;
+            }
+
+            const btn = document.getElementById('process-btn');
+            const status = document.getElementById('status-box');
+            if (a.status && a.status.nonce === pendingNonce) {
+                status.style.display = 'block';
+                status.style.color = a.status.ok ? '#4CAF50' : '#ff5252';
+                status.innerText = a.status.message;
+                btn.disabled = false;
+                btn.innerText = "Apply Rough Alignment to Round";
+                pendingNonce = null;
+            }
+        });
+
+        // --- UI Sync & Transforms ---
+        function syncInputs(rangeId, numId) {
+            const r = document.getElementById(rangeId), n = document.getElementById(numId);
+            r.addEventListener('input', () => { n.value = r.value; updateAlign(); });
+            n.addEventListener('input', () => { r.value = n.value; updateAlign(); });
+        }
+        syncInputs('opacity', 'op-num');
+        syncInputs('rotation', 'rot-num');
+        syncInputs('x-trans', 'x-num');
+        syncInputs('y-trans', 'y-num');
+        syncInputs('img-scale', 'scale-num');
+        document.getElementById('flip-h').addEventListener('change', updateAlign);
+
+        function updateAlign() {
+            const op = document.getElementById('opacity').value;
+            const rot = document.getElementById('rotation').value;
+            const x = document.getElementById('x-trans').value;
+            const y = document.getElementById('y-trans').value;
+            const imgScale = document.getElementById('img-scale').value;
+            const flip = document.getElementById('flip-h').checked ? -1 : 1;
+
+            const target = document.getElementById('target-img');
+            target.style.opacity = op;
+            // Apply flip and scale simultaneously to avoid overwriting properties
+            target.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg) scale(${flip * imgScale}, ${imgScale})`;
+        }
+
+        // --- Viewport Panning/Zooming ---
+        let scale = 1, panX = 0, panY = 0, dragging = false, sx, sy;
+        const v = document.getElementById('viewport'), w = document.getElementById('canvas-wrapper');
+        function updateViewport() { w.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; }
+        
+        v.addEventListener('wheel', e => { e.preventDefault(); scale += e.deltaY * -0.001; scale = Math.max(0.1, scale); updateViewport(); });
+        v.addEventListener('mousedown', e => { if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') { dragging=true; sx=e.clientX-panX; sy=e.clientY-panY; }});
+        v.addEventListener('mousemove', e => { if(dragging){ e.preventDefault(); panX=e.clientX-sx; panY=e.clientY-sy; updateViewport(); }});
+        window.addEventListener('mouseup', () => dragging=false);
+
+        // --- Batch Process Round ---
+        document.getElementById('process-btn').addEventListener('click', () => {
+            const btn = document.getElementById('process-btn');
+            const status = document.getElementById('status-box');
+
+            btn.disabled = true;
+            btn.innerText = "Processing Round...";
+            status.style.display = 'block';
+            status.style.color = '#fff';
+            status.innerText = "Aligning all images in round...";
+
+            pendingNonce = Date.now();
+            const payload = {
+                nonce: pendingNonce,
+                scale_ratio: currentScaleRatio,
+                tx: document.getElementById('x-trans').value,
+                ty: document.getElementById('y-trans').value,
+                rotation: document.getElementById('rotation').value,
+                img_scale: document.getElementById('img-scale').value,
+                flip: document.getElementById('flip-h').checked
+            };
+            toStreamlit("streamlit:setComponentValue", {value: payload, dataType: "json"});
+        });
+
+        toStreamlit("streamlit:componentReady", {apiVersion: 1});
+    </script>
+</body>
+</html>

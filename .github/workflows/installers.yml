@@ -1,0 +1,66 @@
+# Builds the one-click installers for Windows, macOS and Linux.
+#   - Run it by hand: Actions tab -> "installers" -> "Run workflow". The installers appear under "Artifacts".
+#   - Publish a GitHub Release (Releases -> Draft a new release -> tag v2.0.0 -> Publish): the installers are
+#     built again and attached to that release, ready for people to download.
+name: installers
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest,  label: Windows (x86_64) }
+          - { os: macos-latest,    label: macOS (Apple Silicon) }
+          - { os: macos-15-intel,  label: macOS (Intel) }
+          - { os: ubuntu-latest,   label: Linux (x86_64) }
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          activate-environment: builder
+          channels: conda-forge
+          channel-priority: strict
+          conda-remove-defaults: "true"
+
+      - name: Install build tools
+        run: conda install -y conda-build "constructor>=3.10" "menuinst>=2.1" conda-standalone
+
+      - name: Build packages (aicsimageio, ramfish-studio)
+        run: |
+          CHANNEL="$RUNNER_TEMP/channel"
+          conda build --output-folder "$CHANNEL" --no-anaconda-upload installer/recipes/aicsimageio
+          conda build --output-folder "$CHANNEL" --no-anaconda-upload \
+            -c "file://$(python -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).as_posix())' "$CHANNEL")" \
+            -c conda-forge installer/recipes/ramfish-studio
+          echo "RAMFISH_LOCAL_CHANNEL=$(python -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).resolve().as_uri())' "$CHANNEL")" >> "$GITHUB_ENV"
+
+      - name: Build installer
+        run: constructor installer --output-dir dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RAMFISH-Studio-${{ runner.os }}-${{ runner.arch }}
+          path: dist/RAMFISH-Studio-*
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/RAMFISH-Studio-*

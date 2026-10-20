@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schemas.conda.org/menuinst/menuinst-1-1-0.schema.json",
+  "menu_name": "RAMFISH Studio",
+  "menu_items": [
+    {
+      "name": "RAMFISH Studio",
+      "description": "Multiplexed RAMFISH image analysis: import, align, count spots and merge.",
+      "icon": "{{ MENU_DIR }}/ramfish-studio.{{ ICON_EXT }}",
+      "command": ["{{ PYTHON }}", "{{ PREFIX }}/share/ramfish-studio/ramfish_launcher.py"],
+      "activate": false,
+      "terminal": true,
+      "platforms": {
+        "win": {
+          "desktop": true
+        },
+        "linux": {
+          "Categories": ["Science", "Education"]
+        },
+        "osx": {
+          "CFBundleName": "RAMFISH Studio",
+          "CFBundleDisplayName": "RAMFISH Studio"
+        }
+      }
+    }
+  ]
+}

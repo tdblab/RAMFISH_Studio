@@ -1,0 +1,47 @@
+{% set version = "2.0.0" %}
+
+package:
+  name: ramfish-studio
+  version: {{ version }}
+
+source:
+  path: ../../..
+
+build:
+  number: 1
+  noarch: generic
+
+requirements:
+  run:
+    - python 3.12.*
+    - streamlit >=1.50
+    - pandas
+    - numpy
+    - scipy
+    - scikit-image
+    - tifffile
+    - imagecodecs
+    - imageio
+    - py-opencv
+    - simpleitk
+    - pillow
+    # Microscopy formats via Bio-Formats (as in ramfish_processor.py)
+    - aicsimageio 4.14.0   # local build from installer/recipes/aicsimageio (lxml cap lifted)
+    - numcodecs <0.16
+    - scyjava
+    - bioformats_jar
+    - openjdk >=11
+    - maven
+
+test:
+  commands:
+    - test -f $PREFIX/share/ramfish-studio/app.py                       # [unix]
+    - test -f $PREFIX/Menu/ramfish-studio.json                          # [unix]
+    - if not exist %PREFIX%\share\ramfish-studio\app.py exit 1          # [win]
+    - if not exist %PREFIX%\Menu\ramfish-studio.json exit 1             # [win]
+
+about:
+  license: MIT
+  license_file: LICENSE
+  summary: RAMFISH Studio - multiplexed RAMFISH image analysis in one app
+  home: https://github.com/tdblab/RAMFISH_Studio

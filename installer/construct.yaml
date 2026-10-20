@@ -1,0 +1,47 @@
+# One-click installers for RAMFISH Studio (built with conda "constructor").
+#   Windows: RAMFISH-Studio-<version>-Windows-x86_64.exe
+#   macOS:   RAMFISH-Studio-<version>-MacOSX-<arm64|x86_64>.pkg
+#   Linux:   RAMFISH-Studio-<version>-Linux-x86_64.sh
+# Build: see installer/README.md (or the GitHub Actions workflow).
+
+name: RAMFISH-Studio
+version: 2.0.0
+company: Tirtha Das Banerjee
+license_file: ../LICENSE
+
+channels:
+  - {{ os.environ.get("RAMFISH_LOCAL_CHANNEL", "local") }}
+  - conda-forge
+
+specs:
+  - python 3.12.*
+  - ramfish-studio 2.0.0
+
+# Create the Start-menu / Applications / app-menu shortcut defined by the ramfish-studio package.
+menu_packages:
+  - ramfish-studio
+
+installer_type: exe      # [win]
+installer_type: pkg      # [osx]
+installer_type: sh       # [linux]
+
+# Install for the current user only: no administrator rights needed.
+default_prefix: "%USERPROFILE%\\RAMFISH-Studio"     # [win]
+default_prefix: "$HOME/RAMFISH-Studio"              # [linux]
+pkg_name: RAMFISH-Studio                           # [osx]  -> ~/RAMFISH-Studio; the app icon goes to Applications
+
+# Leave any Python / conda the user already has untouched.
+initialize_conda: false
+initialize_by_default: false
+register_python: false
+register_python_default: false
+keep_pkgs: false
+
+icon_image: icons/ramfish-studio.png
+welcome_image: images/welcome-win.png              # [win]
+header_image: images/header-win.png                # [win]
+welcome_image: images/welcome-mac.png              # [osx]
+conclusion_text: |
+  RAMFISH Studio is installed.
+  Start it from the "RAMFISH Studio" shortcut. It opens in your web browser;
+  your results are saved in Documents/RAMFISH Studio/Output.

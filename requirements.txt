@@ -1,0 +1,15 @@
+streamlit>=1.50
+pandas
+numpy
+scipy
+scikit-image
+tifffile
+imagecodecs
+imageio
+opencv-python
+SimpleITK
+pillow
+# Microscopy formats (.oir, .czi, .lif, .nd2, ...); Java comes from conda (bioformats_jar openjdk maven)
+aicsimageio>=4.14,<5
+numcodecs<0.16.0
+scyjava

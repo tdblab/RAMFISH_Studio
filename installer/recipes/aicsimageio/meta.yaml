@@ -1,0 +1,49 @@
+# aicsimageio 4.14.0 from PyPI, repackaged for the RAMFISH Studio installer.
+# Same code and dependency pins as on PyPI, except that the old "lxml <5" cap is lifted:
+# Python 3.12 builds of lxml 4.x need an outdated libxml2 that no longer fits the rest of
+# the environment. aicsimageio reads OME metadata correctly with lxml 5/6 (tested).
+{% set version = "4.14.0" %}
+
+package:
+  name: aicsimageio
+  version: {{ version }}
+
+source:
+  url: https://files.pythonhosted.org/packages/d6/d9/2ee5b3136cab29904a2816d40ace37236fcf47081976705087d12230ec2e/aicsimageio-{{ version }}-py2.py3-none-any.whl
+  sha256: b3df2beba7d000c35660816116d562bfe96ed2beb79713b023a7579e5e72c646
+
+build:
+  number: 1000
+  noarch: python
+  script: {{ PYTHON }} -m pip install aicsimageio-{{ version }}-py2.py3-none-any.whl --no-deps --no-build-isolation -vv
+
+requirements:
+  host:
+    - python >=3.9
+    - pip
+  run:
+    - python >=3.9
+    - dask >=2021.4.1
+    - fsspec >=2022.8.0,<2023.9.0
+    - imagecodecs >=2020.5.30
+    - lxml >=4.6
+    - numpy >=1.21.0
+    - ome-types >=0.3.4
+    - ome-zarr >=0.6.1
+    - pyyaml >=6.0
+    - wrapt >=1.12
+    - resource_backed_dask_array >=0.1.0
+    - tifffile >=2021.8.30,<2023.3.15
+    - xarray >=0.16.1
+    - xmlschema
+    - zarr >=2.6,<2.16.0
+
+test:
+  imports:
+    - aicsimageio
+    - aicsimageio.readers.ome_tiff_reader
+
+about:
+  home: https://github.com/AllenCellModeling/aicsimageio
+  license: BSD-3-Clause
+  summary: Image reading, metadata conversion, and image writing for microscopy images in pure Python
