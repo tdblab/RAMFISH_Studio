@@ -1,5 +1,7 @@
 # 🔬 RAMFISH Studio
 
+<img width="2816" height="959" alt="ramfish" src="https://github.com/user-attachments/assets/eb67a12b-e8a6-4a91-b31f-ac40a24b4625" />
+
 The five tools of the **RAMFISH Software Suite** in one browser app:
 
 ```text
