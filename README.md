@@ -2,7 +2,13 @@
 
 # 🔬 RAMFISH Studio
 
+<<<<<<< HEAD
 **RAMFISH Studio** brings the five tools of the RAMFISH Software Suite together in one app that opens in your web browser:
+=======
+<img width="2816" height="959" alt="ramfish" src="https://github.com/user-attachments/assets/eb67a12b-e8a6-4a91-b31f-ac40a24b4625" />
+
+The five tools of the **RAMFISH Software Suite** in one browser app:
+>>>>>>> 5799dd8898a7fc3875e72e15d9719bbda024dbda
 
 ```text
 1. Import & normalize → 2. Rough alignment → 3. Fine alignment → 4. Spot counter → 5. Multiplex merge
@@ -18,6 +24,7 @@ Everything runs on your own computer. Your images are never uploaded anywhere.
 
 Download and install Miniconda for your operating system from the official documentation:
 
+<<<<<<< HEAD
 - **Windows:** Install the Python 3.12 64-bit Miniconda installer. During installation, select **Just Me**. Adding Miniconda to `PATH` is optional; using the Miniconda Prompt is recommended.
 - **Linux (x86_64):** Run:
 
@@ -45,6 +52,16 @@ Open **Anaconda Prompt / Miniconda Prompt** on Windows, or a terminal on macOS/L
 Run the following commands one at a time:
 
 #### 1. Create the environment
+=======
+Then start **RAMFISH Studio** from the desktop / Start menu, Applications or the app menu. It opens in your web
+browser and runs entirely on your computer; results are saved in `Documents/RAMFISH Studio/Output/`. No Python or
+conda knowledge needed. See [installer/README.md](installer/README.md) for details (and how the installers are
+built).
+
+### Manual installation (conda)
+
+Install Miniconda: https://docs.conda.io/en/latest/, then in the Anaconda Prompt (Windows) or a terminal:
+>>>>>>> 5799dd8898a7fc3875e72e15d9719bbda024dbda
 
 ```bash
 conda create -n ramfish python=3.12 -y
