@@ -1,106 +1,157 @@
+<img src="assets/ramfish-logo.png" alt="RAMFISH" width="260">
+
 # 🔬 RAMFISH Studio
 
-The five tools of the **RAMFISH Software Suite** in one browser app:
+**RAMFISH Studio** brings the five tools of the RAMFISH Software Suite together in one app that opens in your web browser:
 
 ```text
 1. Import & normalize → 2. Rough alignment → 3. Fine alignment → 4. Spot counter → 5. Multiplex merge
 ```
 
-Each step is the corresponding RAMFISH script (`ramfish_processor.py`, `ramfish_rough_aligner.py`,
-`ramfish_fine_aligner.py`, `ramfish_spotcounter.py`, `ramfish_merger.html`), with the same processing,
-parameters and interface. The app passes the images from one step to the next, so files no longer have to be
-moved between `normalized_data/`, `Round_N/`, `aligned_outputs/` and `rawdata/` by hand.
+Everything runs on your own computer. Your images are never uploaded anywhere.
 
-## Installation
+---
 
-### One-click installer (recommended)
+## 🌱 Installation (one time only)
 
-Download the installer for your computer from the **Releases** page and double-click it:
+### Step 1: Install Miniconda
 
-| Windows | macOS | Linux |
-|---|---|---|
-| `RAMFISH-Studio-…-Windows-x86_64.exe` | `RAMFISH-Studio-…-MacOSX-arm64.pkg` (Apple Silicon) or `-x86_64.pkg` (Intel) | `bash RAMFISH-Studio-…-Linux-x86_64.sh` |
+Download and install Miniconda for your operating system from the official documentation:
 
-Then start **RAMFISH Studio** from the desktop / Start menu, Applications or the app menu. It opens in your web
-browser and runs entirely on your computer; results are saved in `Documents/RAMFISH Studio/Output/`. No Python or
-conda knowledge needed. See [installer/README.md](installer/README.md) for details (and how the installers are
-built).
-
-### Manual installation (conda)
-
-Install [Miniconda](https://docs.conda.io/en/latest/), then in the Anaconda Prompt (Windows) or a terminal:
+- **Windows:** Install the Python 3.12 64-bit Miniconda installer. During installation, select **Just Me**. Adding Miniconda to `PATH` is optional; using the Miniconda Prompt is recommended.
+- **Linux (x86_64):** Run:
 
 ```bash
-# 1. Create and activate the conda environment
+mkdir -p ~/miniconda3
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+rm -f ~/miniconda3/miniconda.sh
+~/miniconda3/bin/conda init bash
+```
+
+- **macOS Apple Silicon (M1/M2/M3/M4):** Install the `MacOSX-arm64` Miniconda package.
+- **macOS Intel:** Install the `MacOSX-x86_64` Miniconda package.
+
+Official Miniconda documentation:
+
+https://docs.conda.io/en/latest/
+
+---
+
+### Step 2: Create the RAMFISH Environment
+
+Open **Anaconda Prompt / Miniconda Prompt** on Windows, or a terminal on macOS/Linux.
+
+Run the following commands one at a time:
+
+#### 1. Create the environment
+
+```bash
 conda create -n ramfish python=3.12 -y
+```
+
+#### 2. Activate the environment
+
+```bash
 conda activate ramfish
+```
 
-# 2. Install Java and Bio-Formats bridge libraries (required for .oir, .czi, .lif, .nd2, etc.)
+#### 3. Install Java and Bio-Formats support
+
+```bash
 conda install -c conda-forge bioformats_jar openjdk maven -y
+```
 
-# 3. Install RAMFISH Studio's dependencies (from this folder)
-pip install -r requirements.txt
+#### 4. Install the app dependencies
 
-# 4. Optional: GPU acceleration (NVIDIA CUDA 12.x; use cupy-cuda11x for CUDA 11.x)
+```bash
+pip install streamlit pandas numpy scipy scikit-image tifffile imagecodecs imageio opencv-python SimpleITK pillow "aicsimageio>=4.14,<5" "numcodecs<0.16.0" scyjava
+```
+
+#### 5. Optional: Install NVIDIA GPU acceleration
+
+For NVIDIA GPUs supporting CUDA 12.x:
+
+```bash
 pip install "cupy-cuda12x[ctk]"
 ```
 
-## Run
+For systems using CUDA 11.x, use:
+
+```bash
+pip install "cupy-cuda11x[ctk]"
+```
+
+---
+
+### Step 3: Download RAMFISH Studio
+
+On this GitHub page, click the green **Code** button → **Download ZIP**, unzip it into your **Documents** folder and rename the unzipped folder to `RAMFISH_Studio`.
+
+---
+
+## 🚀 Start RAMFISH Studio (every time)
+
+Open **Anaconda Prompt / Miniconda Prompt** on Windows, or a terminal on macOS/Linux, and run:
+
+#### 1. Activate the environment
 
 ```bash
 conda activate ramfish
-cd path/to/RAMFISH_Studio
+```
+
+#### 2. Go to the RAMFISH Studio folder
+
+```bash
+cd Documents/RAMFISH_Studio
+```
+
+#### 3. Start the app
+
+```bash
 streamlit run app.py
 ```
 
-The app opens in your browser. On the first page, type a **project name**; everything is saved in
-`Output/<project name>/` next to the app (pick the name again later to continue the project):
+The app opens in your web browser. Keep the prompt/terminal window open while you work; close it when you are done.
+
+---
+
+## 🧬 Using the app
+
+Work through the five steps in the left menu. Each page tells you exactly what to do.
+
+1. **Import & normalize:** type a project name and load your images, one folder per round (`Round_1`, `Round_2`, …). Name the nuclear stain `DAPI` (or the tissue outline `mask`) and every other image after its gene.
+2. **Rough alignment:** drag the sliders until each round overlaps Round 1, then click **Apply Rough Alignment to Round**.
+3. **Fine alignment:** click **Run Batch Alignment**.
+4. **Spot counter:** click **Run spot counter** to count the mRNA spots of every gene.
+5. **Multiplex merge:** pick colors and click **Generate Composite**.
+
+All results are saved in the `Output` folder inside the RAMFISH Studio folder:
 
 ```text
 Output/<project name>/
-├── 1_normalized/      Round_1/DAPI.tif, wg.tif …   images used by the next steps
-│                      exports/Round_1/NORM_…       exported copies (chosen format, Z-slices, MIP)
-├── 2_rough_aligned/   Round_2/ALIGNED_DAPI.tif …
-├── 3_fine_aligned/    R2_aligned_DAPI.tif …
-├── 4_spots/           data_sheets/  spot_images/  synthetic_spots/
-└── 5_merge/           multiplex_composite.jpg
+├── 1_normalized/
+├── 2_rough_aligned/
+├── 3_fine_aligned/
+├── 4_spots/
+└── 5_merge/
 ```
 
-Round 1 is the reference that all other rounds are aligned to. Each page starts with a short
-**How to use this page** guide.
+---
 
-## Steps
+# 💻 Hardware Requirements
 
-1. **Import & normalize.** Upload microscope files for one round (`.oir`, `.czi`, `.lif`, `.nd2`, `.tif`, …), or a
-   `.zip` with one folder per round (`Round_1/`, `Round_2/`, …). Z-stacks get a maximum-intensity projection.
-   Background subtraction + percentile normalization (GPU if available). Each round needs an image named `DAPI` or `mask`; the other image names are the gene names.
-2. **Rough alignment.** The rough-aligner interface: Round 1 is fixed, choose the round to align, then adjust
-   opacity, scale, rotation, X/Y translation and horizontal flip (scroll to zoom, drag to pan). **Apply Rough
-   Alignment to Round** transforms every image of that round.
-3. **Fine alignment.** Affine + non-rigid B-Spline registration (SimpleITK) of each round's `DAPI` — or its `mask`
-   if the round has no DAPI (affine only by default) — onto Round 1, applied to every image of the round.
-4. **Spot counter.** LoG blob detection with the `config.json` settings (`blob_min_sigma`, `blob_max_sigma`,
-   `blob_num_sigma`, `blob_threshold`, `intensity_cutoff`, `synthetic_spot_radius`), each explained on the page.
-5. **Multiplex merge.** The RAM-FISH Merger, preloaded with the synthetic spots (or the aligned images) and the
-   DAPI backdrop. Generate the composite and download it (also saved in `5_merge/`).
-
-## Hardware
-
-| | Recommended | High performance |
+| Component | Recommended | High Performance |
 |---|---|---|
 | CPU | AMD Ryzen 5 5600X / Intel Core i5-12400F | AMD Ryzen Threadripper 9965WX |
-| GPU | NVIDIA RTX 3060 | NVIDIA RTX 5080 / 5090 |
+| GPU | NVIDIA RTX 3060 | NVIDIA RTX 5080 / RTX 5090 |
 | RAM | 32 GB DDR4 | 128 GB DDR5 |
+| Storage | SSD recommended | High-speed NVMe SSD |
 
 Tested on Windows 11 and Ubuntu 24.04.
 
-## Tests
-
-```bash
-pip install -r requirements-dev.txt
-pytest
-```
+---
 
 ## License
 
-MIT License, © 2026 Tirtha Das Banerjee. See [LICENSE](LICENSE).
+MIT License, © 2026 Tirtha Das Banerjee
