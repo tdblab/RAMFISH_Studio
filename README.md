@@ -30,7 +30,7 @@ built).
 
 ### Manual installation (conda)
 
-Install [Miniconda](https://docs.conda.io/en/latest/), then in the Anaconda Prompt (Windows) or a terminal:
+Install Miniconda: https://docs.conda.io/en/latest/, then in the Anaconda Prompt (Windows) or a terminal:
 
 ```bash
 # 1. Create and activate the conda environment
