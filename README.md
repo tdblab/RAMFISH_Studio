@@ -137,6 +137,8 @@ Output/<project name>/
 └── 5_merge/
 ```
 
+For a quick test you can run the online version with the two round example datasets provided along with this repository: https://ramfishstudio.streamlit.app/
+
 ---
 
 # 💻 Hardware Requirements
