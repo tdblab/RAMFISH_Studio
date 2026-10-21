@@ -9,7 +9,8 @@ imageio
 opencv-python-headless
 SimpleITK
 pillow
-# Microscopy formats (.oir, .czi, .lif, .nd2, ...); Java comes from conda (bioformats_jar openjdk maven)
-aicsimageio>=4.14,<5
-numcodecs<0.16.0
-scyjava
+# Microscopy formats (.oir, .czi, .lif, .nd2, ...); Java comes from conda (bioformats_jar openjdk maven).
+# aicsimageio only installs on Python <= 3.12; on newer Python (e.g. online servers) TIFF/PNG/JPG still work.
+aicsimageio>=4.14,<5; python_version < "3.13"
+numcodecs<0.16.0; python_version < "3.13"
+scyjava; python_version < "3.13"
