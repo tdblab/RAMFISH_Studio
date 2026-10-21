@@ -1,0 +1,3 @@
+This example zip file contains only two rounds with 3 images in each round for a quick test of the app.
+
+Load the zip file in the app and run the pipeline.
