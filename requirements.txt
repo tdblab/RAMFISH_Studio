@@ -6,7 +6,7 @@ scikit-image
 tifffile
 imagecodecs
 imageio
-opencv-python
+opencv-python-headless
 SimpleITK
 pillow
 # Microscopy formats (.oir, .czi, .lif, .nd2, ...); Java comes from conda (bioformats_jar openjdk maven)
