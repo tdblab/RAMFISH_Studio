@@ -1,4 +1,5 @@
-<img src="assets/ramfish-logo.png" alt="RAMFISH" width="260">
+<img width="2400" height="1792" alt="ramfish_studio" src="https://github.com/user-attachments/assets/378d3bba-f1c5-4235-8a4d-da9422f5084d" />
+
 
 # 🔬 RAMFISH Studio
 
