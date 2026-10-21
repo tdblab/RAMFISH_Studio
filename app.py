@@ -5,6 +5,8 @@ Run locally:   streamlit run app.py
 
 from __future__ import annotations
 
+import io
+import zipfile
 from pathlib import Path
 
 import streamlit as st
@@ -34,5 +36,15 @@ with st.sidebar:
         st.markdown(f"**Project:** {project.name}  \n{len(rounds)} round(s), "
                     f"{sum(len(project.channels(r)) for r in rounds)} image(s)")
         st.caption(f"Saved in `{project.root}`")
+        if st.button("Prepare project download"):
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                for f in sorted(project.root.rglob("*")):
+                    if f.is_file():
+                        zf.write(f, f"{project.name}/{f.relative_to(project.root).as_posix()}")
+            st.session_state.project_zip = (project.name, buf.getvalue())
+        if st.session_state.get("project_zip", (None,))[0] == project.name:
+            st.download_button("Download whole project (.zip)", st.session_state.project_zip[1],
+                               file_name=f"{project.name}.zip", mime="application/zip")
 
 nav.run()
