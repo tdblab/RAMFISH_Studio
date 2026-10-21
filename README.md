@@ -1,4 +1,4 @@
-<img width="2400" height="1792" alt="ramfish_studio" src="https://github.com/user-attachments/assets/378d3bba-f1c5-4235-8a4d-da9422f5084d" />
+<img width="960" height="717" alt="ramfish_studio" src="https://github.com/user-attachments/assets/599110d4-f84e-4f6f-b1f8-a4fe5045105e" />
 
 
 # 🔬 RAMFISH Studio
