@@ -74,6 +74,10 @@ def test_fine_spots_merge(project, demo):
     assert not at.exception
     assert (project.root / "3_fine_aligned" / "R3_aligned_dll.tif").exists()
     assert project.stage_of(3, "dll") == "fine"
+    for c in project.channels(1):   # Round 1 is copied unchanged, so the folder holds every round
+        copy = project.path("fine", 1, c)
+        assert copy.read_bytes() == project.path("normalized", 1, c).read_bytes()
+        assert project.stage_of(1, c) == "normalized"
 
     at = click(page("spot_counter").run(), "Run spot counter")
     assert not at.exception

@@ -22,7 +22,8 @@ rotated, shifted and scaled (a mask has no detail inside the tissue, so bending 
 3. The aligned images then appear at the bottom. Scroll through them: the tissue should sit in the same place in
    every picture. If a round looks wrong, redo its rough alignment in step 2 and run this step again.
 
-Saved in `3_fine_aligned/` (for example `R2_aligned_ptc.tif` = gene *ptc* from Round 2).
+Saved in `3_fine_aligned/` (for example `R2_aligned_ptc.tif` = gene *ptc* from Round 2). Round 1 is saved
+there too, unchanged (`R1_aligned_…`), so the folder holds every round.
 **Next:** **4 · Spot counter** to count mRNA dots, or **5 · Multiplex merge** for a combined picture.
 """)
 if not need_project_data(project):
@@ -84,6 +85,7 @@ if st.button("Run Batch Alignment", type="primary"):
                 step += 1
             project.log("fine_align", {"affine": "GD lr=1.0, 100 it", "bspline": "mesh 8x8, LBFGSB 50 it" if bend else "off"},
                         round=r, aligned_on=ch, channels=project.channels(r))
+        project.write_reference_copies("fine")   # Round 1 unchanged, so the folder holds every round
         progress.progress(100, text="Alignment completely successfully!")
         st.session_state.pop("aligned_zip", None)
     except Exception as e:

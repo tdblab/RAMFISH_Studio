@@ -33,7 +33,8 @@ starts close to the right answer. This matters most when a sample was rotated, f
 5. Click **Apply Rough Alignment to Round**: every image of that round is moved in exactly the same way.
    Then pick the next round.
 
-A round that already overlaps well can be skipped. Saved in `2_rough_aligned/`. **Next:** **3 · Fine alignment**.
+A round that already overlaps well can be skipped. Saved in `2_rough_aligned/`, together with an unchanged copy
+of Round 1. **Next:** **3 · Fine alignment**.
 """, expanded=False)
 rnd = c1.selectbox("Round to align (Round 1 is the fixed reference)", rounds,
                    format_func=lambda r: f"Round {r}" + (" ✓ applied" if str(r) in project.meta.get("rough_params", {}) else ""))
@@ -79,6 +80,7 @@ if value and value.get("nonce") != st.session_state.get(f"rough_done_{rnd}"):
             out = project.path("rough", rnd, c)
             out.parent.mkdir(parents=True, exist_ok=True)
             tifffile.imwrite(out, ra.apply(img, value))
+        project.write_reference_copies("rough")   # Round 1 unchanged, so the folder holds every round
         project.clear_stage("fine", rnd)
         params = {k: value[k] for k in ("tx", "ty", "rotation", "img_scale", "flip", "scale_ratio")}
         project.meta.setdefault("rough_params", {})[str(rnd)] = params

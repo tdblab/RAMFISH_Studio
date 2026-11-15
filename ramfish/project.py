@@ -138,6 +138,24 @@ class Project:
         if stage == "rough":
             self.clear_stage("fine", rnd)
 
+    def write_reference_copies(self, stage: str) -> list[Path]:
+        """Save Round 1's images, unchanged, in the ``rough`` or ``fine`` folder too.
+
+        Round 1 is the reference and never moves, so its aligned image is its normalized image.
+        The copies only make each folder complete (every round in one place); nothing reads them back.
+        """
+        r0 = self.reference_round
+        if r0 is None or stage not in ("rough", "fine"):
+            return []
+        out = []
+        for c in self.channels(r0):
+            src, dst = self.path("normalized", r0, c), self.path(stage, r0, c)
+            if src.exists():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src, dst)
+                out.append(dst)
+        return out
+
     def remove_channel(self, rnd: int, channel: str) -> None:
         for stage in STAGES:
             p = self.path(stage, rnd, channel)
@@ -231,3 +249,78 @@ class Project:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+# ------------------------------------------------------------ .ramfish files
+PROJECT_EXT = ".ramfish"
+
+
+def save_project_file(project: Project, dest: str | Path | None = None) -> bytes | Path:
+    """Pack the whole project folder into one ``.ramfish`` file (a zip archive).
+
+    Returns the file's bytes, or writes it to ``dest`` and returns that path.
+    """
+    import io
+    import zipfile
+
+    project.meta["saved"] = _now()
+    project.save()
+    buf = io.BytesIO() if dest is None else None
+    target = buf if dest is None else Path(dest)
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in sorted(project.root.rglob("*")):
+            if f.is_file():
+                zf.write(f, f"{project.name}/{f.relative_to(project.root).as_posix()}")
+    return buf.getvalue() if dest is None else Path(dest)
+
+
+def load_project_file(source, output_root: str | Path, overwrite: bool = False) -> Path:
+    """Unpack a ``.ramfish`` file into ``output_root/<project name>/`` and return that folder.
+
+    ``source`` is a path, bytes or a file-like object. If a project of the same
+    name already exists and ``overwrite`` is False, the loaded project gets a
+    new name (``name_2``, ``name_3``, ...).
+    """
+    import io
+    import zipfile
+
+    if isinstance(source, (bytes, bytearray)):
+        source = io.BytesIO(source)
+    try:
+        zf = zipfile.ZipFile(source)
+    except zipfile.BadZipFile as exc:
+        raise ValueError("This is not a RAMFISH project file.") from exc
+    with zf:
+        names = [n for n in zf.namelist() if not n.endswith("/")]
+        metas = [n for n in names if n.count("/") == 1 and n.endswith("/" + META)]
+        if len(metas) != 1:
+            raise ValueError("This is not a RAMFISH project file (no project information inside).")
+        top = metas[0].split("/")[0]
+        meta = json.loads(zf.read(metas[0]))
+        name = clean_name(meta.get("name") or top)
+        root = Path(output_root)
+        dest = root / name
+        if dest.exists() and not overwrite:
+            k = 2
+            while (root / f"{name}_{k}").exists():
+                k += 1
+            name = f"{name}_{k}"
+            dest = root / name
+        elif dest.exists():
+            shutil.rmtree(dest)
+        dest.mkdir(parents=True)
+        base = dest.resolve()
+        for n in names:
+            if not n.startswith(top + "/"):
+                continue
+            target = (dest / n[len(top) + 1:]).resolve()
+            if base not in target.parents:          # ignore paths that point outside the project
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(n) as src, open(target, "wb") as out:
+                shutil.copyfileobj(src, out)
+    meta_path = dest / META
+    meta = json.loads(meta_path.read_text())
+    meta["name"] = name
+    meta_path.write_text(json.dumps(meta, indent=2))
+    return dest
