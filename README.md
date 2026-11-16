@@ -15,6 +15,14 @@ https://github.com/user-attachments/assets/77bb9daf-1a8e-4c43-90a9-7923419bbdc8
 Everything runs on your own computer. Your images are never uploaded anywhere.
 
 ---
+##  📽️Video tutorial
+
+
+https://github.com/user-attachments/assets/6e29fea9-a44c-4f2a-ab2f-219cba0840b0
+
+
+
+---
 
 ## 🌱 Installation (one time only)
 
