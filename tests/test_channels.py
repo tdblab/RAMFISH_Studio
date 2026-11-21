@@ -125,3 +125,19 @@ def test_zip_source_copies_members(tmp_path):
         zf.writestr("Round_1/scan_00001", b"abc" * 1000)
     ZipSource(buf).copy_to("Round_1/scan_00001", tmp_path / "scan_00001")
     assert (tmp_path / "scan_00001").read_bytes() == b"abc" * 1000
+
+
+def test_planned_z_ignores_switched_off_z_settings(tmp_path):
+    """Every .oir stores the microscope's Z settings; a single-plane image has them with enable="false"."""
+    from ramfish.channels import oir_planned_z
+    off = (b'<commonparam:axis xsi:type="commonparam:ZAxisParam" enable="false" paramEnable="true"> '
+           b"<commonparam:axis>ZSTACK</commonparam:axis> <commonparam:startPosition>1.0</commonparam:startPosition> "
+           b"<commonparam:endPosition>13.0</commonparam:endPosition> <commonparam:step>1.0</commonparam:step> "
+           b"<commonparam:maxSize>13</commonparam:maxSize> </commonparam:axis>")
+    p = tmp_path / "wing.oir"
+    p.write_bytes(b"\x00" * 100 + off)
+    assert oir_planned_z(p) is None
+    on = off.replace(b'enable="false"', b'enable="true"')
+    q = tmp_path / "stack.oir"
+    q.write_bytes(b"\x00" * 100 + on)
+    assert oir_planned_z(q) == (13, 1.0)

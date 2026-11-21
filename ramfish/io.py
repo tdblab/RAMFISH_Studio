@@ -160,7 +160,12 @@ def _aicsimageio():
         conda_prefix = os.environ.get("CONDA_PREFIX", sys.prefix)
         java_path = Path(conda_prefix) / "Library"
         if not os.environ.get("JAVA_HOME"):
-            os.environ["JAVA_HOME"] = str(java_path)
+            if java_path.exists():                      # conda on Windows
+                os.environ["JAVA_HOME"] = str(java_path)
+            elif shutil.which("java"):                  # Java from the system (Linux servers, e.g. the online app)
+                os.environ["JAVA_HOME"] = str(Path(os.path.realpath(shutil.which("java"))).parent.parent)
+            else:
+                os.environ["JAVA_HOME"] = str(java_path)
         import scyjava
 
         scyjava.config.endpoints.append('com.google.guava:guava:31.1-jre')

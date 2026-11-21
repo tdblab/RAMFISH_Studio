@@ -134,8 +134,9 @@ The app opens in your web browser. Keep the prompt/terminal window open while yo
 
 Work through the five steps in the left menu. Each page tells you exactly what to do.
 
-1. **Import & normalize:** type a project name and load your images, one folder per round (`Round_1`, `Round_2`, …). Name the nuclear stain `DAPI` (or the tissue outline `mask`) and every other image after its gene.
+1. **Import & normalize:** type a project name and load your microscope files. A file with several channels is named after its round and its genes, each gene followed by its dye, for example `round1_dpp_alexa546__optix_alexa647__omb_alexa488__hh_alexa514.oir`; the app matches every gene to the right channel by its dye. Single-channel images are named after their gene, the nuclear stain `DAPI`, or the tissue outline `mask`. Without DAPI, the app makes a tissue mask for every round. For thick 3D samples, choose *Same depth in every round* and the app finds the depth of Round 1 in every other round.
 2. **Rough alignment:** drag the sliders until each round overlaps Round 1, then click **Apply Rough Alignment to Round**.
+   - **3D stacks** (thick samples such as a zebrafish brain): step 2 becomes a 3D aligner. Each round's volume is placed onto Round 1's (up/down, left/right, front/back, turn, tilt, scale) in a 3D view of the tissue outlines; then every depth that all rounds cover becomes a small flat project that goes through steps 3 to 5, each of which gets a Z depth slider. Thin samples such as wings keep the flat aligner.
 3. **Fine alignment:** click **Run Batch Alignment**.
 4. **Spot counter:** click **Run spot counter** to count the mRNA spots of every gene.
 5. **Multiplex merge:** pick colors and click **Generate Composite**.
@@ -144,7 +145,11 @@ All results are saved in the `Output` folder inside the RAMFISH Studio folder:
 
 ```text
 Output/<project name>/
-├── 1_normalized/
+├── 1_import_and_normalize/
+│   ├── raw/          every channel as read from the microscope (all Z planes, 16-bit)
+│   ├── normalized/   the 2D images used by the next steps
+│   └── exports/      copies in the chosen format (Z planes, projection, slab, mask)
+├── sections/         3D samples only: one small project per z-plane (S1_6p38um/, S2_9p57um/, ...)
 ├── 2_rough_aligned/
 ├── 3_fine_aligned/
 ├── 4_spots/

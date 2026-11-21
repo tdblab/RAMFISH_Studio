@@ -280,9 +280,14 @@ def oir_dye_names(path: str | Path, chunk: int = 32 << 20) -> dict[str, str]:
 # Olympus software saves a large stack as name.oir plus extra files name_00001, name_00002, ... (no extension)
 # that hold the rest of the planes. They must sit next to the .oir for the whole stack to be read.
 _OIR_PART = re.compile(r"^(.+)_(\d{5})$")
+# The Z axis of the image itself (only written when the stack was really taken), else an enabled Z setting.
+# Every .oir also stores the Z settings of the microscope with enable="false" when no stack was taken: ignored.
 _OIR_ZSTACK = re.compile(
-    rb"<commonparam:axis>ZSTACK</commonparam:axis>(?:(?!</commonimage:axis>).){0,400}?"
+    rb"<commonimage:axis[^>]*ZAxisParam[^>]*>\s*<commonparam:axis>ZSTACK</commonparam:axis>(?:(?!</commonimage:axis>).){0,400}?"
     rb"<commonparam:step>([\d.]+)</commonparam:step>\s*<commonparam:maxSize>(\d+)</commonparam:maxSize>", re.S)
+_OIR_ZSTACK_ON = re.compile(
+    rb"<commonparam:axis[^>]*ZAxisParam[^>]*enable=\"true\"[^>]*paramEnable=\"true\"[^>]*>\s*<commonparam:axis>ZSTACK</commonparam:axis>"
+    rb"(?:(?!</commonparam:axis>\s*</).){0,400}?<commonparam:step>([\d.]+)</commonparam:step>\s*<commonparam:maxSize>(\d+)</commonparam:maxSize>", re.S)
 
 
 def oir_part_stem(name: str) -> str | None:
@@ -317,7 +322,8 @@ def oir_planned_z(path: str | Path, chunk: int = 64 << 20) -> tuple[int, float] 
     size = path.stat().st_size
     with open(path, "rb") as f:
         f.seek(max(0, size - chunk))
-        m = _OIR_ZSTACK.search(f.read())
+        data = f.read()
+    m = _OIR_ZSTACK.search(data) or _OIR_ZSTACK_ON.search(data)
     if not m:
         return None
     return int(m.group(2)), float(m.group(1))
