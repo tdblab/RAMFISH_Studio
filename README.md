@@ -79,7 +79,7 @@ conda install -c conda-forge bioformats_jar openjdk maven -y
 #### 4. Install the app dependencies
 
 ```bash
-pip install streamlit pandas numpy scipy scikit-image tifffile imagecodecs imageio opencv-python SimpleITK pillow "aicsimageio>=4.14,<5" "numcodecs<0.16.0" scyjava
+pip install streamlit pandas numpy scipy scikit-image tifffile imagecodecs imageio opencv-python SimpleITK pillow "aicsimageio>=4.14,<5" "numcodecs<0.16.0" scyjava plotly
 ```
 
 #### 5. Optional: Install NVIDIA GPU acceleration
