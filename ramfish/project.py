@@ -1,7 +1,9 @@
 """One RAMFISH project = one folder, ``Output/<project name>/``::
 
-    1_normalized/Round_1/DAPI.tif           step 1: 16-bit images used by the next steps
-    1_normalized/exports/Round_1/NORM_...   step 1: the exporter's files (chosen format, Z-slices, MIP)
+    1_import_and_normalize/raw/Round_1/dpp.tif          step 1: each channel as read from the microscope file
+                                                         (16-bit, all Z planes, pixel size kept; opens in Fiji)
+    1_import_and_normalize/normalized/Round_1/dpp.tif   step 1: 16-bit 2D images used by the next steps
+    1_import_and_normalize/exports/Round_1/NORM_...     step 1: the exporter's files (chosen format, Z-slices, MIP)
     2_rough_aligned/Round_2/ALIGNED_DAPI.tif
     3_fine_aligned/R2_aligned_DAPI.tif
     4_spots/data_sheets/, spot_images/, synthetic_spots/
@@ -9,6 +11,7 @@
     .ramfish_project.json                   rounds, channels and settings
 
 Round 1 is the coordinate reference, so it only ever has ``normalized`` images.
+Projects made before the raw folder existed have ``1_normalized/``; it is moved into the new folder on opening.
 """
 
 from __future__ import annotations
@@ -26,8 +29,10 @@ from .io import read_plane, write_plane_u16
 
 STAGES = ("normalized", "rough", "fine")
 META = ".ramfish_project.json"
-STEP_DIRS = {"normalized": "1_normalized", "rough": "2_rough_aligned", "fine": "3_fine_aligned",
-             "spots": "4_spots", "merge": "5_merge"}
+STEP_DIRS = {"import": "1_import_and_normalize", "raw": "1_import_and_normalize/raw",
+             "normalized": "1_import_and_normalize/normalized", "exports": "1_import_and_normalize/exports",
+             "rough": "2_rough_aligned", "fine": "3_fine_aligned", "spots": "4_spots", "merge": "5_merge"}
+LEGACY_NORMALIZED = "1_normalized"   # step 1 folder of projects made before the raw folder existed
 # Channels used to align rounds, in order of preference (matched case-insensitively).
 ALIGNMENT_CHANNELS = ("dapi", "mask")
 
@@ -60,6 +65,7 @@ class Project:
                 "software_version": __version__,
             }
             self.save()
+        self._move_legacy_folder()
 
     # ------------------------------------------------------------------ meta
     def save(self) -> None:
@@ -86,7 +92,20 @@ class Project:
     def step_dir(self, step: str) -> Path:
         return self.root / STEP_DIRS[step]
 
+    def _move_legacy_folder(self) -> None:
+        """Projects made before the raw folder existed have 1_normalized/ (with exports/ inside): move its
+        contents to 1_import_and_normalize/normalized/ and .../exports/ so old projects keep working."""
+        legacy = self.root / LEGACY_NORMALIZED
+        if not legacy.is_dir() or self.step_dir("import").exists():
+            return
+        self.step_dir("import").mkdir(parents=True)
+        if (legacy / "exports").is_dir():
+            shutil.move(str(legacy / "exports"), str(self.step_dir("exports")))
+        shutil.move(str(legacy), str(self.step_dir("normalized")))
+
     def path(self, stage: str, rnd: int, channel: str) -> Path:
+        if stage == "raw":
+            return self.step_dir("raw") / f"Round_{rnd}" / f"{channel}.tif"
         if stage == "normalized":
             return self.step_dir(stage) / f"Round_{rnd}" / f"{channel}.tif"
         if stage == "rough":
@@ -115,12 +134,15 @@ class Project:
         new = clean_name(new)
         if new == old or new in self.channels(rnd):
             return old
-        for stage in STAGES:
+        for stage in ("raw",) + STAGES:
             src = self.path(stage, rnd, old)
             if src.exists():
                 src.rename(self.path(stage, rnd, new))
         chans = self.meta["rounds"][str(rnd)]
         chans[chans.index(old)] = new
+        raw = self.meta.get("raw", {}).get(str(rnd), {})
+        if old in raw:
+            raw[new] = raw.pop(old)
         self.save()
         return new
 
@@ -157,10 +179,11 @@ class Project:
         return out
 
     def remove_channel(self, rnd: int, channel: str) -> None:
-        for stage in STAGES:
+        for stage in ("raw",) + STAGES:
             p = self.path(stage, rnd, channel)
             if p.exists():
                 p.unlink()
+        self.meta.get("raw", {}).get(str(rnd), {}).pop(channel, None)
         chans = self.meta["rounds"].get(str(rnd), [])
         if channel in chans:
             chans.remove(channel)
@@ -171,8 +194,35 @@ class Project:
     def remove_round(self, rnd: int) -> None:
         for stage in STAGES:
             self.clear_stage(stage, rnd)
+        d = self.step_dir("raw") / f"Round_{rnd}"
+        if d.exists():
+            shutil.rmtree(d)
         self.meta["rounds"].pop(str(rnd), None)
+        self.meta.get("raw", {}).pop(str(rnd), None)
         self.save()
+
+    # ------------------------------------------------------------ raw images
+    def add_raw(self, rnd: int, channel: str, stack_zyx: np.ndarray, info: dict) -> str:
+        """Store one channel as read from the microscope file (all Z planes), with where it came from."""
+        from .io import write_stack_u16
+        channel = clean_name(channel)
+        write_stack_u16(self.path("raw", rnd, channel), stack_zyx, info.get("pixel_um"))
+        self.meta.setdefault("raw", {}).setdefault(str(rnd), {})[channel] = info
+        self.save()
+        return channel
+
+    def raw_rounds(self) -> list[int]:
+        return sorted(int(r) for r, chans in self.meta.get("raw", {}).items() if chans)
+
+    def raw_channels(self, rnd: int) -> list[str]:
+        return list(self.meta.get("raw", {}).get(str(rnd), {}))
+
+    def raw_info(self, rnd: int, channel: str) -> dict:
+        return dict(self.meta.get("raw", {}).get(str(rnd), {}).get(channel, {}))
+
+    def load_raw(self, rnd: int, channel: str) -> np.ndarray:
+        from .io import read_stack
+        return read_stack(self.path("raw", rnd, channel))
 
     def stage_of(self, rnd: int, channel: str, upto: str = "fine") -> str | None:
         """Most processed stage available for an image, not beyond ``upto``."""

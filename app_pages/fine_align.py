@@ -5,10 +5,12 @@ import cv2
 import streamlit as st
 
 from ramfish.fine_align import apply_transforms, compute_transforms, match_fixed_shape_centered, read_image_bytes
-from ui_common import alignable_rounds, how_to, need_project, need_project_data, preview_path, thumb
+from ui_common import alignable_rounds, how_to, need_project, need_project_data, preview_path, thumb, z_planes, z_select
 
 project = need_project()
 st.title("🎯 Fine alignment")
+project = z_select(project, "fine")     # a 3D stack: the chosen z-plane
+all_z = z_planes(project)
 how_to("""
 **What this step does:** automatically corrects the small differences that remain between each round and Round 1,
 and applies exactly the same correction to every gene image of that round. Afterwards all images line up with
@@ -40,7 +42,7 @@ for r in rounds:
     src = project.stage_of(r, ch, "rough")
     targets = [c for c in project.channels(r) if c != ch]
     st.markdown(f"- **Round {r} Alignment** — structural reference: `{ch}` "
-                f"({'roughly aligned' if src == 'rough' else 'not roughly aligned'}); target genes: "
+                f"({'lined up in 3D in step 2' if project.meta.get('section', {}).get('aligned_3d') else 'roughly aligned' if src == 'rough' else 'not roughly aligned'}); target genes: "
                 + ", ".join(f"`{t}`" for t in targets))
 
 out_dir = project.step_dir("fine")
@@ -56,7 +58,20 @@ if any(project.alignment_channel(r).lower() == "mask" for r in rounds):
 else:
     bend_masks = False
 
-if st.button("Run Batch Alignment", type="primary"):
+if all_z:
+    za, zb = st.columns(2)
+    run_one = za.button("Run Batch Alignment (this z-plane)", type="primary", width="stretch")
+    if zb.button(f"Run Batch Alignment on all {len(all_z)} z-planes", width="stretch"):
+        from ramfish import depth as dp
+        bar = st.progress(0.0, text="Starting...")
+        for i, sub in enumerate(all_z):
+            dp.fine_align(sub, bend_masks, progress=lambda f, i=i: bar.progress(
+                min((i + f) / len(all_z), 1.0), text=f"z-plane {i + 1} of {len(all_z)}: fine alignment"))
+        bar.progress(1.0, text="All z-planes aligned.")
+        st.session_state.pop("aligned_zip", None)
+else:
+    run_one = st.button("Run Batch Alignment", type="primary")
+if run_one:
     progress = st.progress(0, text="Initializing images in memory...")
     total_steps = sum(1 + len(project.channels(r)) for r in rounds)
     step = 0

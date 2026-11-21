@@ -17,7 +17,8 @@ try:
 except Exception:
     HAS_GPU = False
 
-RES_MODES = ["Original Resolution", "2K (2048 x 2048)", "4K (4096 x 4096)", "Custom Scaling Factor"]
+RES_4K = "4K (longest side 4096 px, keeps the shape)"
+RES_MODES = [RES_4K, "Original Resolution", "2K (2048 x 2048)", "4K (4096 x 4096)", "Custom Scaling Factor"]
 OUTPUT_FORMATS = [".tif", ".jpg", ".png", ".bmp"]
 
 
@@ -52,6 +53,38 @@ def apply_ramfish_normalization(plane_data, do_norm, blur_sigma, percentile_val,
     return img_normalized
 
 
+def target_size(h, w, res_mode, custom_scale=1.0):
+    """(height, width) an image of h x w pixels gets in a resolution mode."""
+    if res_mode == RES_4K:
+        k = 4096.0 / max(h, w)
+        return int(round(h * k)), int(round(w * k))
+    if res_mode == "2K (2048 x 2048)":
+        return 2048, 2048
+    if res_mode == "4K (4096 x 4096)":
+        return 4096, 4096
+    if res_mode == "Custom Scaling Factor":
+        return int(h * custom_scale), int(w * custom_scale)
+    return h, w
+
+
+def resize_plane(plane, res_mode, custom_scale=1.0, nearest=False):
+    """Resize one image (any number type, nothing clipped or rounded) to the size of the resolution mode.
+
+    Used before normalization, so that the normalization and the spot counter work on the full-size 16-bit image.
+    Enlarging uses Lanczos interpolation (sharpest), shrinking uses pixel-area averaging; masks use nearest neighbour.
+    """
+    h, w = plane.shape[:2]
+    nh, nw = target_size(h, w, res_mode, custom_scale)
+    if (nh, nw) == (h, w):
+        return plane
+    if nearest:
+        interp = cv2.INTER_NEAREST
+    else:
+        interp = cv2.INTER_LANCZOS4 if nw > w else cv2.INTER_AREA
+    out = cv2.resize(np.asarray(plane, dtype=np.float32), (nw, nh), interpolation=interp)
+    return np.clip(out, 0, None)      # Lanczos can dip just below zero next to bright spots
+
+
 def format_and_resize(plane_f32, target_format, res_mode, custom_scale):
     """Clips to bit-depth and resizes spatially."""
     # 1. Bit Depth Conversion
@@ -63,15 +96,7 @@ def format_and_resize(plane_f32, target_format, res_mode, custom_scale):
 
     # 2. Spatial Resizing
     h, w = final_img.shape[:2]
-    new_w, new_h = w, h
-
-    if res_mode == "2K (2048 x 2048)":
-        new_w, new_h = 2048, 2048
-    elif res_mode == "4K (4096 x 4096)":
-        new_w, new_h = 4096, 4096
-    elif res_mode == "Custom Scaling Factor":
-        new_w = int(w * custom_scale)
-        new_h = int(h * custom_scale)
+    new_h, new_w = target_size(h, w, res_mode, custom_scale)
 
     if (new_w, new_h) != (w, h):
         interpolation = cv2.INTER_LANCZOS4 if new_w > w else cv2.INTER_AREA

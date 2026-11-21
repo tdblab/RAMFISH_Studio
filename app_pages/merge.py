@@ -6,11 +6,13 @@ import streamlit as st
 
 from ramfish.io import read_plane
 from ramfish.normalize import format_and_resize
-from ui_common import how_to, need_project, need_project_data
+from ui_common import how_to, need_project, need_project_data, z_main, z_planes, z_select
 from ui_components import merger
 
 project = need_project()
 st.title("🌈 Multiplex merge")
+project = z_select(project, "merge")    # a 3D stack: the chosen z-plane
+all_z = z_planes(project)
 how_to("""
 **What this step does:** overlays the genes of all rounds in one coloured picture of the tissue.
 
@@ -25,6 +27,11 @@ how_to("""
    Click **Generate Composite** again after each change.
 4. Click **Download High-Res Image**. The picture is downloaded *and* saved in `5_merge/multiplex_composite.jpg`.
 """)
+
+if all_z:   # one picture per z-plane, redrawn as the Z slider moves
+    from ui_depth import depth_merge
+    depth_merge(z_main(project), all_z, pick=project)
+    st.stop()
 
 if not need_project_data(project):
     st.stop()

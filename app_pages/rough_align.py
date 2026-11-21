@@ -11,6 +11,34 @@ st.markdown("<style>.block-container{padding-top:2.5rem;padding-bottom:0}</style
 
 if not need_project_data(project):
     st.stop()
+
+# ---- 2D images or 3D stacks: the 3D stacks get their own aligner
+from ramfish import sections as _sec   # noqa: E402
+_stacks = _sec.stack_rounds(project)
+_planes = [_sec.n_planes(project, r) for r in _stacks]
+KIND_2D, KIND_3D = "2D: flat images", "3D: stacks of planes"
+_sure = len(_stacks) >= 2 and min(_planes) >= 4          # clearly stacks
+_guess = KIND_3D if len(_stacks) >= 2 else KIND_2D
+_kind = project.meta.get("data_kind") or _guess
+kind = st.radio("Your images are", [KIND_2D, KIND_3D], index=[KIND_2D, KIND_3D].index(_kind), horizontal=True,
+                key="data_kind_pick",
+                help="3D stacks are aligned as whole volumes (also up and down), then cut into one flat project per depth.")
+if not project.meta.get("data_kind") and not _sure and _stacks:
+    st.caption("The app could not tell for sure whether these are flat images or stacks: please choose.")
+elif _stacks:
+    st.caption("Detected: " + ", ".join(f"Round {r} has {n} planes" for r, n in zip(_stacks, _planes)) + ".")
+if kind != project.meta.get("data_kind"):
+    project.meta["data_kind"] = kind
+    project.save()
+if kind == KIND_3D:
+    if len(_stacks) < 2:
+        st.warning("3D alignment needs the stacks (all planes) of at least two rounds: import the microscope files in "
+                   "**1 · Import & normalize**.")
+        st.stop()
+    from ui_align3d import render as _render3d   # noqa: E402
+    _render3d(project)
+    st.stop()
+
 r0 = project.reference_round
 rounds = alignable_rounds(project)
 if not rounds:

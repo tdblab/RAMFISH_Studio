@@ -16,6 +16,14 @@ from ramfish import __version__
 from ramfish.project import PROJECT_EXT, load_project_file, save_project_file
 from ui_common import get_project, output_root
 
+# Streamlit copies every uploaded file again on each page refresh (a full copy of gigabyte microscope stacks,
+# which ran out of memory). The app only reads uploads, so the copy is not needed.
+try:
+    from streamlit.runtime.uploaded_file_manager import UploadedFile
+    UploadedFile.__deepcopy__ = lambda self, memo: self
+except ImportError:
+    pass
+
 ASSETS = Path(__file__).parent / "assets"
 st.set_page_config(page_title="RAMFISH Studio", page_icon=str(ASSETS / "ramfish-icon.png"), layout="wide")
 st.logo(str(ASSETS / "ramfish-icon.png"), size="large")
@@ -37,6 +45,12 @@ with st.sidebar:
         rounds = project.rounds()
         st.markdown(f"**Project:** {project.name}  \n{len(rounds)} round(s), "
                     f"{sum(len(project.channels(r)) for r in rounds)} image(s)")
+        section = project.meta.get("section")
+        if section:   # a z-plane of a 3D project (made in step 2): steps 3 to 5 work on this z-plane
+            st.info(f"Section at {section.get('depth_um')} µm of **{section.get('parent')}**")
+            if not os.environ.get("RAMFISH_PROJECT_DIR") and st.button("⬅ Back to the main project"):
+                st.session_state.project_name = Path(st.session_state.get("project_name", "")).parent.parent.as_posix()
+                st.rerun()
         st.caption(f"Saved in `{project.root}`")
         if st.button("Prepare project download"):
             buf = io.BytesIO()

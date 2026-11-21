@@ -1,4 +1,5 @@
 import io
+import multiprocessing
 import shutil
 import zipfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -7,10 +8,12 @@ import pandas as pd
 import streamlit as st
 
 from ramfish.spots import DEFAULT_CONFIG, process_single_image
-from ui_common import how_to, need_project, need_project_data
+from ui_common import how_to, need_project, need_project_data, z_planes, z_select
 
 project = need_project()
 st.title("🔴 Spot counter")
+project = z_select(project, "spots")    # a 3D stack: the chosen z-plane
+all_z = z_planes(project)
 how_to("""
 **What this step does:** finds the bright mRNA dots in every gene image, counts them, and records where each dot is.
 DAPI and mask images are skipped.
@@ -61,7 +64,20 @@ st.caption("Gene images that will be counted: " + ", ".join(f"`{label}` (Round {
 base = project.step_dir("spots")
 dirs = {"csv": base / "data_sheets" / "individual_csvs", "img": base / "spot_images", "synth": base / "synthetic_spots"}
 
-if st.button("Run spot counter", type="primary"):
+if all_z:
+    za, zb = st.columns(2)
+    run_one = za.button("Run spot counter (this z-plane)", type="primary", width="stretch")
+    if zb.button(f"Run spot counter on all {len(all_z)} z-planes", width="stretch"):
+        from ramfish import depth as dp
+        bar = st.progress(0.0, text="Starting...")
+        for i, sub in enumerate(all_z):
+            dp.count_spots(sub, settings, progress=lambda f, i=i: bar.progress(
+                min((i + f) / len(all_z), 1.0), text=f"z-plane {i + 1} of {len(all_z)}: spot counter"))
+        bar.progress(1.0, text="All z-planes counted.")
+        st.session_state.pop("spots_zip", None)
+else:
+    run_one = st.button("Run spot counter", type="primary")
+if run_one:
     if base.exists():
         shutil.rmtree(base)
     for p in dirs.values():
@@ -69,7 +85,8 @@ if st.button("Run spot counter", type="primary"):
     config = {"settings": settings}
     summary_stats, error_log = [], []
     bar = st.progress(0.0, text="Processing Batch")
-    with ProcessPoolExecutor(max_workers=1) as executor:
+    # "spawn" starts the worker fresh: a forked copy of the app hangs once Java (Bio-Formats, for .oir files) runs in it
+    with ProcessPoolExecutor(max_workers=1, mp_context=multiprocessing.get_context("spawn")) as executor:
         futures = {executor.submit(process_single_image, project.path(project.stage_of(r, c), r, c), dirs, config, label): label
                    for r, c, label in genes}
         for i, future in enumerate(as_completed(futures)):
@@ -117,3 +134,17 @@ if summary_path.exists():
     if st.session_state.get("spots_zip"):
         st.download_button("Download data_sheets / spot_images / synthetic_spots (.zip)", st.session_state.spots_zip,
                            file_name=f"{project.name}_4_spots.zip", mime="application/zip")
+
+if all_z:
+    from ramfish import sections as sec
+    from ui_common import z_main
+    table = sec.combined_counts(z_main(project))
+    if not table.empty:
+        st.subheader("Counts of every z-plane")
+        wide = table.pivot_table(index="Gene", columns="Depth in Round 1 (um)", values="Total_Spots", aggfunc="sum")
+        wide.columns = [f"z = {c:g} µm" for c in wide.columns]
+        st.dataframe(wide, width="stretch")
+        st.caption("Each column is right for its plane. Neighboring planes a few µm apart share many dots (one dot shows "
+                   "in about two planes), so do not add the columns up for a total: use planes about 10 µm apart for that.")
+        st.download_button("📋 Download counts of every z-plane (.csv)", table.to_csv(index=False).encode("utf-8"),
+                           file_name=f"{z_main(project).name}_counts_per_z.csv", mime="text/csv")

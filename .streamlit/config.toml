@@ -1,5 +1,7 @@
 [server]
 maxUploadSize = 16384
+# Largest message the app may send to the browser, in MB (the multiplex merge sends all chosen 4K images at once).
+maxMessageSize = 16384
 
 [browser]
 gatherUsageStats = false

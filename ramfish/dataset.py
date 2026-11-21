@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import io
 import re
+import shutil
 import tempfile
 import zipfile
 from dataclasses import dataclass
@@ -108,6 +109,11 @@ class ZipSource:
     def read(self, name: str) -> bytes:
         return self.zf.read(name)
 
+    def copy_to(self, name: str, dest: str | Path) -> None:
+        """Write one member to ``dest`` piece by piece (large microscope files never sit in memory twice)."""
+        with self.zf.open(name) as src, open(dest, "wb") as out:
+            shutil.copyfileobj(src, out, 16 << 20)
+
 
 class FolderSource:
     def __init__(self, root: str | Path):
@@ -120,6 +126,9 @@ class FolderSource:
 
     def read(self, name: str) -> bytes:
         return (self.root / name).read_bytes()
+
+    def copy_to(self, name: str, dest: str | Path) -> None:
+        shutil.copyfile(self.root / name, dest)
 
 
 def load_stack_bytes(name: str, data: bytes) -> np.ndarray:

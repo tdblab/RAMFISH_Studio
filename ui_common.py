@@ -95,3 +95,44 @@ def how_to(text: str, expanded: bool = True) -> None:
     """Plain-language instructions at the top of a page (open by default)."""
     with st.expander("📖 How to use this page", expanded=expanded):
         st.markdown(text)
+
+
+# ------------------------------------------------------------------------------------------ 3D stacks: z-planes
+def z_main(project: Project) -> Project:
+    """The 3D project a z-plane belongs to (the project itself when it is not a z-plane)."""
+    return Project(project.root.parent.parent) if project.meta.get("section") else project
+
+
+def z_planes(project: Project) -> list[Project]:
+    """The z-planes made in step 2b (one small project per plane), shallow to deep; [] for a flat project."""
+    from ramfish import sections as sec
+    return sec.section_projects(z_main(project))
+
+
+def z_label(sub: Project) -> str:
+    s = sub.meta.get("section", {})
+    p = s.get("planes", {})
+    r0 = min(p, key=int) if p else None
+    return f"z = {s.get('depth_um', 0):g} µm" + (f" (Round {r0} plane {int(p[r0]) + 1})" if r0 else "")
+
+
+def z_select(project: Project, page: str) -> Project:
+    """On steps 3 to 5 of a 3D project: the Z slider. Returns the chosen z-plane (or the project itself if flat).
+
+    The chosen depth is kept when moving between pages."""
+    subs = z_planes(project)
+    if not subs:
+        if any(int((project.raw_info(r, c) or {}).get("z_planes") or 1) > 1
+               for r in project.raw_rounds() for c in project.raw_channels(r)[:1]):
+            st.info("This project has 3D stacks. To run this step on every z-plane on its own (with a Z slider), place "
+                    "the stacks and make the z-planes first in **2 · Rough alignment** (3D mode).")
+        return project
+    if project.meta.get("section") and "z_keep" not in st.session_state:   # opened from 2b: start on that plane
+        st.session_state.z_keep = next((i for i, s in enumerate(subs) if s.root == project.root), 0)
+    keep = min(int(st.session_state.get("z_keep", 0)), len(subs) - 1)
+    st.info(f"🧊 **3D stack of {z_main(project).name}:** this step runs on each of the {len(subs)} z-planes on its own. "
+            "Drag the slider to move through the depth.")
+    idx = st.select_slider("Z depth (below Round 1's first plane)", options=list(range(len(subs))), value=keep,
+                           format_func=lambda i: z_label(subs[i]), key=f"z_idx_{page}")
+    st.session_state.z_keep = idx
+    return subs[idx]
