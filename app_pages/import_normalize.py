@@ -16,6 +16,9 @@ from ramfish.normalize import HAS_GPU, OUTPUT_FORMATS, RES_MODES
 from ramfish.project import clean_name
 from ui_common import existing_projects, get_project, how_to, output_root, preview, thumb
 
+EXAMPLE_ZIP = Path(__file__).resolve().parents[1] / "Rawfile_Example" / "rawdata.zip"
+EXAMPLE_LABEL = "Example data (two rounds of a butterfly wing, built in)"
+
 CLEAN_EXTS = list(set([ext.split('.')[-1] for ext in SUPPORTED_EXTENSIONS]))
 
 st.title("📥 Import & normalize")
@@ -33,6 +36,8 @@ between rounds (it removes the uneven background glow and scales every image the
      (no extension) that hold the rest of the planes: add them too, here or in the same folder of the zip.
    - **Folder on this computer:** type the path of a folder that holds the files (sub-folders `Round_1`, `Round_2`,
      … or file names starting with their round). Nothing is uploaded or copied, so this is the way for large 3D stacks.
+   - **Example data:** two rounds of a butterfly wing that come with the app, to try every step in a few
+     minutes without your own files.
    - **Dataset .zip:** one zip file with a folder per round, called `Round_1`, `Round_2`, … Each folder holds the
      images of that round.
 3. **Name your files so the app knows what is what.** A file with several channels is named after its round and
@@ -76,7 +81,7 @@ col1, col2, col3 = st.columns([1.5, 1, 1.2])
 with col1:
     st.subheader("1. Locate Data")
     mode = st.radio("Source", ["Microscopy files", "Folder on this computer (best for large stacks)",
-                               "Dataset .zip (Round_1/, Round_2/, …)"], label_visibility="collapsed")
+                               "Dataset .zip (Round_1/, Round_2/, …)", EXAMPLE_LABEL], label_visibility="collapsed")
     gen = st.session_state.get("upload_gen", 0)
     uploaded_files, uploaded_zip, rnd, folder_src = None, None, None, None
     if mode.startswith("Folder"):
@@ -116,6 +121,17 @@ with col1:
             n_parts = sum(1 for f in uploaded_files if oir_part_stem(f.name))
             st.success(f"Loaded {len(uploaded_files) - n_parts} file(s) ready for processing"
                        + (f", plus {n_parts} extra part(s) of large .oir stacks." if n_parts else "."))
+    elif mode == EXAMPLE_LABEL:
+        if EXAMPLE_ZIP.exists():
+            uploaded_zip = str(EXAMPLE_ZIP)       # read where it is: nothing to upload
+            ex = {}
+            for e in dataset.scan(dataset.ZipSource(uploaded_zip).names()):
+                ex.setdefault(e.round, []).append(e.channel or Path(e.name).stem)
+            st.success("Built-in example, ready to run: " + "; ".join(
+                f"Round {r}: {', '.join(sorted(ex[r]))}" for r in sorted(k for k in ex if k is not None))
+                + ". Name the project above, then click **Execute**.")
+        else:
+            st.warning("The example data is not in this copy of the app (`Rawfile_Example/rawdata.zip`).")
     else:
         uploaded_zip = st.file_uploader("Dataset archive (.zip)", type=["zip"], key=f"zip_{gen}",
                                         help="One folder per round (Round_1/, Round_2/, …); file names become channel "

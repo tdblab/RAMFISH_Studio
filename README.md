@@ -79,7 +79,7 @@ conda install -c conda-forge bioformats_jar openjdk maven -y
 #### 4. Install the app dependencies
 
 ```bash
-pip install streamlit pandas numpy scipy scikit-image tifffile imagecodecs imageio opencv-python SimpleITK pillow "aicsimageio>=4.14,<5" "numcodecs<0.16.0" scyjava plotly
+pip install streamlit pandas numpy scipy scikit-image tifffile imagecodecs imageio opencv-python SimpleITK pillow "aicsimageio>=4.14,<5" "numcodecs<0.16.0" scyjava
 ```
 
 #### 5. Optional: Install NVIDIA GPU acceleration
@@ -156,7 +156,7 @@ Output/<project name>/
 └── 5_merge/
 ```
 
-For a quick test you can run the online version with the two round example datasets provided along with this repository: https://ramfishstudio.streamlit.app/
+For a quick test, choose **Example data** under *1. Locate Data* on the first page: two rounds of a butterfly wing (`Rawfile_Example/rawdata.zip`, 87 MB) come with the app and load with one click, so every step can be tried without your own files. The same example also runs in the online version: https://ramfishstudio.streamlit.app/
 
 ---
 
