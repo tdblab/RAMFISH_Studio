@@ -156,7 +156,7 @@ Output/<project name>/
 └── 5_merge/
 ```
 
-For a quick test, choose **Example data** under *1. Locate Data* on the first page: two rounds of a butterfly wing (`Rawfile_Example/rawdata.zip`, 87 MB) come with the app and load with one click, so every step can be tried without your own files. The same example also runs in the online version: https://ramfishstudio.streamlit.app/
+For a quick test, choose **Example data** under *1. Locate Data* on the first page: three rounds of a butterfly wing (`Rawfile_Example/Round_1.zip`, `Round_10.zip` and `Round_12.zip`, 170 MB in all, one zip per round so each stays under GitHub's 100 MB limit) come with the app and load with one click, so every step can be tried without your own files. The same example also runs in the online version: https://ramfishstudio.streamlit.app/
 
 ---
 

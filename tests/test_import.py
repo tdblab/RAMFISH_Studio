@@ -192,3 +192,20 @@ def test_images_are_enlarged_to_4k_before_normalization(tmp_path):
     # enlarging never makes negative values, and keeps the brightness of a flat area
     flat = resize_plane(np.full((10, 20), 500.0), RES_4K)
     assert flat.shape == (2048, 4096) and np.allclose(flat, 500.0, atol=1)
+
+
+def test_several_zips_read_as_one(tmp_path):
+    """One zip per round (the built-in example) is read as one dataset."""
+    import zipfile
+    from ramfish import dataset
+    for r in (1, 10):
+        with zipfile.ZipFile(tmp_path / f"Round_{r}.zip", "w") as z:
+            z.writestr(f"Round_{r}/", "")
+            z.writestr(f"Round_{r}/{r}_mask.tif", b"x")
+            z.writestr(f"Round_{r}/{r}_omb.tif", b"y")
+    src = dataset.MultiZipSource(sorted(tmp_path.glob("*.zip")))
+    assert sorted(src.names()) == ["Round_1/1_mask.tif", "Round_1/1_omb.tif", "Round_10/10_mask.tif", "Round_10/10_omb.tif"]
+    assert src.read("Round_10/10_omb.tif") == b"y"
+    src.copy_to("Round_1/1_mask.tif", tmp_path / "m.tif")
+    assert (tmp_path / "m.tif").read_bytes() == b"x"
+    assert {(e.round, e.channel) for e in dataset.scan(src.names())} == {(1, "mask"), (1, "omb"), (10, "mask"), (10, "omb")}

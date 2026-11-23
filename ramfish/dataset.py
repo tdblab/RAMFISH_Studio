@@ -115,6 +115,26 @@ class ZipSource:
             shutil.copyfileobj(src, out, 16 << 20)
 
 
+class MultiZipSource:
+    """Several .zip files read as one dataset (e.g. one zip per round, to stay under GitHub's 100 MB file limit)."""
+
+    def __init__(self, paths):
+        self.zips = [ZipSource(p) for p in paths]
+        self._where = {}
+        for z in self.zips:
+            for n in z.names():
+                self._where.setdefault(n, z)
+
+    def names(self) -> list[str]:
+        return list(self._where)
+
+    def read(self, name: str) -> bytes:
+        return self._where[name].read(name)
+
+    def copy_to(self, name: str, dest: str | Path) -> None:
+        self._where[name].copy_to(name, dest)
+
+
 class FolderSource:
     def __init__(self, root: str | Path):
         self.root = Path(root).expanduser()
