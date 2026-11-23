@@ -23,8 +23,17 @@ Read the detailed manual for installation and file structure used by the Studio.
 
 https://github.com/user-attachments/assets/6e29fea9-a44c-4f2a-ab2f-219cba0840b0
 
+**2D tutorial:** Alignment on two rounds of butterfly larval wing tissue.
+
 Video created with the help of Anthropic's Claude.
 
+
+
+https://github.com/user-attachments/assets/b516ccd0-d36a-4256-80a0-4eded4dfd54c
+
+**3D tutorial:** Alignment on two rounds of zebrafish 14dpf larval brain.
+
+Video created with the help of Anthropic's Claude.
 
 ---
 
