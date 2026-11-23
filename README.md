@@ -15,25 +15,14 @@ Video created with the help of Google's Gemini.
 
 Everything runs on your own computer. Your images are never uploaded anywhere.
 
-Read the detailed manual for installation and file structure used by the Studio. File: **RAMFISH_Studio_manual.pdf**
-
 ---
 ##  📽️Video tutorial
 
 
 https://github.com/user-attachments/assets/6e29fea9-a44c-4f2a-ab2f-219cba0840b0
 
-**2D tutorial:** Alignment on two rounds of butterfly larval wing tissue.
-
 Video created with the help of Anthropic's Claude.
 
-
-
-https://github.com/user-attachments/assets/b516ccd0-d36a-4256-80a0-4eded4dfd54c
-
-**3D tutorial:** Alignment on two rounds of zebrafish 14dpf larval brain.
-
-Video created with the help of Anthropic's Claude.
 
 ---
 
@@ -90,7 +79,7 @@ conda install -c conda-forge bioformats_jar openjdk maven -y
 #### 4. Install the app dependencies
 
 ```bash
-pip install streamlit pandas numpy scipy scikit-image tifffile imagecodecs imageio opencv-python SimpleITK pillow "aicsimageio>=4.14,<5" "numcodecs<0.16.0" scyjava plotly
+pip install streamlit pandas numpy scipy scikit-image tifffile imagecodecs imageio opencv-python SimpleITK pillow "aicsimageio>=4.14,<5" "numcodecs<0.16.0" scyjava
 ```
 
 #### 5. Optional: Install NVIDIA GPU acceleration

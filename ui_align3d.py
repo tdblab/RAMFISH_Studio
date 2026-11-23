@@ -10,7 +10,7 @@ from ramfish import align3d as a3, sections as sec
 from ramfish.project import Project
 from ui_common import how_to
 
-MAGENTA, GREEN = "#d61f9c", "#2fbf4a"
+MAGENTA, CYAN = "#ff2bd6", "#00e5ff"
 
 
 @st.cache_data(max_entries=24, show_spinner="Reading the stack...")
@@ -28,11 +28,19 @@ def _lines(segments: list[np.ndarray], z_stretch: float):
 
 
 def _overlay(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Round 1 in magenta, the moved round in cyan: white (or gray) where both are equally bright."""
     rgb = np.zeros(a.shape + (3,), np.float32)
     rgb[..., 0] = a
-    rgb[..., 2] = a
     rgb[..., 1] = b
+    rgb[..., 2] = np.maximum(a, b)
     return (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
+
+
+@st.cache_data(max_entries=8, show_spinner=False)
+def _filled(root: str, r0: int, r: int, use: str, stamp: str, p: tuple):
+    v0, _, gs0 = _small(root, r0, use, stamp)
+    vr, _, gsr = _small(root, r, use, stamp)
+    return a3.filled_planes(v0, gs0, vr, gsr, dict(p))
 
 
 def render(project: Project) -> None:
@@ -47,11 +55,14 @@ does not need to be perfect, the fine alignment (step 3) does the rest.
 1. Pick a round under **Round to place**. Round 1 is the fixed reference.
 2. Choose what the volumes are drawn from: the **mask** (tissue outline made from the gene channels) or **DAPI**
    (tissue outline from the nuclei). Each plane's outline is drawn as a line: Round 1 in magenta, the round you
-   move in green. Drag inside the 3D view to look around it; the mouse wheel zooms.
+   move in cyan. With **Fill the planes** on, the tissue inside the outlines is filled in too: magenta where only
+   Round 1 has tissue, cyan where only the moved round has, and **white where they overlap**. **Fill opacity**
+   makes the filled planes more or less see-through. Drag inside the 3D view to look around it; the mouse wheel
+   zooms.
 3. Click **Suggest a position** for a first guess, then move the round with the sliders: **Up / down** (depth, in
    µm) fixes a stack that started at another plane; **Left / right** and **Front / back** slide it; **Turn**,
    **Tilt** and **Scale** turn, tilt and resize it. **Stretch depth** only changes the view (stacks are thin).
-4. Check one depth closely under **Check one depth**: Round 1 in magenta, the moved round in green, white where
+4. Check one depth closely under **Check one depth**: Round 1 in magenta, the moved round in cyan, white where
    they overlap.
 5. Click **Save this round's position**, then do the next round.
    Under **Leave out planes**, pick any bad plane (out of focus, empty, damaged) of any round: every depth that
@@ -116,17 +127,33 @@ does not need to be perfect, the fine alignment (step 3) does the rest.
         st.checkbox("Mirror left–right", key=keys["flip"])
         z_stretch = st.slider("Stretch depth (view only)", 1.0, 20.0, 6.0, 0.5, key="a3_zstretch",
                               help="The stacks are much thinner than they are wide; stretching the depth makes the planes easier to tell apart.")
+        fill = st.toggle("Fill the planes", value=True, key="a3_fill",
+                         help="Fills the tissue of every plane: magenta = only Round 1, cyan = only the moved round, "
+                              "white = both. Off shows the outlines only.")
+        fill_op = st.slider("Fill opacity", 0.05, 1.0, 0.35, 0.05, key="a3_fill_op", disabled=not fill,
+                            help="Low = see-through planes, 1 = solid planes.")
     p = {k: st.session_state[key] for k, key in keys.items()}
 
     # ---- 3D view
     seg0 = a3.outline_points(v0, gs0)
     segr = [a3.to_ref(s, gsr, gs0, p) for s in a3.outline_points(vr, gsr)]
     fig = go.Figure()
-    for segs, col, name in ((seg0, MAGENTA, f"Round {r0}"), (segr, GREEN, f"Round {r}")):
+    if fill:
+        planes = _filled(str(project.root), r0, r, use, stamp, tuple(sorted(p.items())))
+        for kind, col, name in (("ref", MAGENTA, f"Only Round {r0}"), ("moved", CYAN, f"Only Round {r}"),
+                                ("both", "#ffffff", "Both (overlap)")):
+            X, Y, Z = planes[kind]
+            if np.isnan(Z).all():
+                continue
+            fig.add_trace(go.Surface(x=X, y=Y, z=-Z * z_stretch, surfacecolor=np.zeros_like(Z),
+                                     colorscale=[[0, col], [1, col]], cmin=0, cmax=1, showscale=False,
+                                     opacity=fill_op, name=name, showlegend=True, hoverinfo="skip",
+                                     lighting=dict(ambient=1.0, diffuse=0.0, specular=0.0, fresnel=0.0)))
+    for segs, col, name in ((seg0, MAGENTA, f"Round {r0}"), (segr, CYAN, f"Round {r}")):
         x, y, z = _lines(segs, z_stretch)
         fig.add_trace(go.Scatter3d(x=x, y=y, z=z, mode="lines", line=dict(color=col, width=3), name=name,
                                    hoverinfo="skip"))
-    fig.update_layout(height=620, margin=dict(l=0, r=0, t=10, b=0), uirevision="a3", legend=dict(x=0.02, y=0.98),
+    fig.update_layout(height=620, margin=dict(l=0, r=0, t=10, b=0), uirevision="a3", legend=dict(x=0.02, y=0.98, bgcolor="rgba(14,17,23,0.75)", font=dict(color="#eee")),
                       scene=dict(aspectmode="data", xaxis_title="X (µm)", yaxis_title="Y (µm)",
                                  zaxis_title=f"Depth (µm × {z_stretch:g})",
                                  yaxis=dict(autorange="reversed"), bgcolor="#0e1117",
@@ -148,7 +175,7 @@ does not need to be perfect, the fine alignment (step 3) does the rest.
         what = "DAPI" if use == a3.USE_DAPI else "genes"
         k1.image(_overlay(s0[z] / max(float(s0[z].max()), 1e-6), cut_s / max(float(cut_s.max()), 1e-6)), width="stretch",
                  caption=f"Round {r0} plane {z + 1} {what} (magenta) + Round {r} at the same depth, about its plane "
-                         f"{zr + 1:.1f} (green): white where they agree")
+                         f"{zr + 1:.1f} (cyan): white where they agree")
         k1.caption(f"Outlines overlap: {a3._corr(v0[z], cut_m):.2f} (1 = perfect)")
     with k2:
         if st.button(f"✅ Save Round {r}'s position", type="primary"):

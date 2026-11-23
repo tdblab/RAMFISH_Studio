@@ -10,10 +10,15 @@
         #viewport { flex-grow: 1; overflow: hidden; background-color: #000; position: relative; cursor: grab; display: flex; align-items: center; justify-content: center;}
         #viewport:active { cursor: grabbing; }
         
-        #canvas-wrapper { position: relative; transform-origin: center center; }
+        #canvas-wrapper { position: relative; transform-origin: center center; isolation: isolate; background: #000; }
         .img-layer { position: absolute; top: 0; left: 0; transform-origin: center center; width: 100%; height: 100%; pointer-events: none;}
         #ref-img { z-index: 1; }
         #target-img { z-index: 2; opacity: 0.5; }
+        /* color mode: Round 1 magenta, moved round cyan, added up so matching tissue turns white */
+        body.colors #ref-img { filter: url(#to-magenta); }
+        body.colors #target-img { filter: url(#to-cyan); mix-blend-mode: lighten; }
+        .legend { font-size: 0.8rem; color: #ccc; margin: -4px 0 8px 0; line-height: 1.5; }
+        .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
         
         h2 { margin: 0; border-bottom: 1px solid #555; padding-bottom: 10px; color: #4fc3f7; font-size: 1.2rem;}
         label { display: block; margin-bottom: 3px; font-size: 0.85rem; color: #aaa; font-weight: bold;}
@@ -44,6 +49,9 @@
         <h2>1. Visual Setup</h2>
         <div id="round-info" style="font-size:0.85rem; color:#ddd; line-height:1.5;"></div>
 
+        <div style="display:flex; align-items:center; margin-top: 8px;"><input type="checkbox" id="colors" checked style="margin-right:8px;"><label for="colors" style="margin:0;">Magenta + cyan colors</label></div>
+        <div class="legend" id="color-legend"><span class="sw" style="background:#ff00ff"></span>Round 1 &nbsp; <span class="sw" style="background:#00ffff"></span>moved round &nbsp; <span class="sw" style="background:#fff"></span>both (match)</div>
+
         <h2 style="margin-top:15px;">2. Alignment Tools</h2>
         <div><label>Target Opacity</label><div class="slider-container"><input type="range" id="opacity" min="0" max="1" step="0.05" value="0.5"><input type="number" id="op-num" class="num-input" value="0.5" step="0.05"></div></div>
         <div><label>Image Scale</label><div class="slider-container"><input type="range" id="img-scale" min="0.1" max="5.0" step="0.01" value="1.0"><input type="number" id="scale-num" class="num-input" value="1.0" step="0.01"></div></div>
@@ -55,6 +63,11 @@
         <button id="process-btn" disabled>Apply Rough Alignment to Round</button>
         <div id="status-box"></div>
     </div>
+
+    <svg width="0" height="0" style="position:absolute">
+        <filter id="to-magenta" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0.3 0.59 0.11 0 0  0 0 0 0 0  0.3 0.59 0.11 0 0  0 0 0 1 0"/></filter>
+        <filter id="to-cyan" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0  0.3 0.59 0.11 0 0  0.3 0.59 0.11 0 0  0 0 0 1 0"/></filter>
+    </svg>
 
     <div id="viewport">
         <div id="canvas-wrapper">
@@ -137,6 +150,20 @@
         syncInputs('y-trans', 'y-num');
         syncInputs('img-scale', 'scale-num');
         document.getElementById('flip-h').addEventListener('change', updateAlign);
+
+        // Colors on: both pictures fully shown and added up (opacity 1); off: gray, the top one half see-through.
+        function setColors(on, setOpacity) {
+            document.body.classList.toggle('colors', on);
+            document.getElementById('color-legend').style.display = on ? 'block' : 'none';
+            if (setOpacity) {
+                const v = on ? 1.0 : 0.5;
+                document.getElementById('opacity').value = v;
+                document.getElementById('op-num').value = v;
+                updateAlign();
+            }
+        }
+        document.getElementById('colors').addEventListener('change', e => setColors(e.target.checked, true));
+        setColors(true, true);
 
         function updateAlign() {
             const op = document.getElementById('opacity').value;

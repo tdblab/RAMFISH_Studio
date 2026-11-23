@@ -98,3 +98,20 @@ def test_left_out_planes_drop_their_depths(moved):
     assert z not in keep3 and set(keep3) < set(keep2)
     subs = a3.build_zplanes(p, params, export=False)
     assert len(subs) == len(keep3)
+
+
+def test_filled_planes_marks_overlap():
+    """Same volume, no move: everything is "both"; shifted sideways: each round gets its own strip."""
+    g = {"n": 4, "h": 60, "w": 80, "px": 1.0, "dz": 2.0}
+    v = np.zeros((4, 60, 80), np.float32)
+    v[:, 15:45, 20:60] = 1
+    same = a3.filled_planes(v, g, v, g, a3.DEFAULT, cells=80)
+    assert np.isfinite(same["both"][2]).sum() > 0
+    assert np.isfinite(same["ref"][2]).sum() == 0 and np.isfinite(same["moved"][2]).sum() == 0
+    moved = a3.filled_planes(v, g, v, g, dict(a3.DEFAULT, tx=10.0), cells=80)
+    for k in ("ref", "moved", "both"):
+        assert np.isfinite(moved[k][2]).sum() > 0
+    X, Y, Z = moved["moved"]
+    assert np.nanmin(np.where(np.isfinite(Z), X, np.nan)) > 50      # round 2's own strip is on the right
+    deeper = a3.filled_planes(v, g, v, g, dict(a3.DEFAULT, tz=4.0), cells=80)
+    assert np.nanmax(deeper["moved"][2]) > np.nanmax(same["both"][2])  # the moved stack reaches deeper

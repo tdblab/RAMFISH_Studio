@@ -172,6 +172,48 @@ def cut_plane(vol: np.ndarray, g_r: dict, g_0: dict, p: dict, z0_um: float, out_
     return out if any_inside else None
 
 
+def filled_planes(v0: np.ndarray, g0: dict, vr: np.ndarray, gr: dict, p: dict, cells: int = 120) -> dict:
+    """Filled tissue of both rounds, plane by plane, for the 3D view.
+
+    The planes sit at Round 1's depths (extended above and below to cover round r). On each plane every grid
+    cell is "ref" (only Round 1 has tissue there), "moved" (only round r) or "both". Returns
+    {"ref" | "moved" | "both": (X, Y, Z)} in µm in Round 1's space, as 2D arrays where the planes are stacked
+    row-wise, with NaN in Z wherever a cell is not of that kind (and one NaN row between planes)."""
+    # area covered by both rounds, in Round 1's space
+    corners = np.array([[x, y, z] for x in (0, gr["w"] * gr["px"]) for y in (0, gr["h"] * gr["px"])
+                        for z in (0, (vr.shape[0] - 1) * gr["dz"])], dtype=np.float64)
+    cr = to_ref(corners, gr, g0, p)
+    x0, x1 = min(0.0, cr[:, 0].min()), max(g0["w"] * g0["px"], cr[:, 0].max())
+    y0, y1 = min(0.0, cr[:, 1].min()), max(g0["h"] * g0["px"], cr[:, 1].max())
+    step = max(x1 - x0, y1 - y0) / float(cells)
+    W, H = int(np.ceil((x1 - x0) / step)) + 1, int(np.ceil((y1 - y0) / step)) + 1
+    xs, ys = x0 + np.arange(W) * step, y0 + np.arange(H) * step
+    shift = lambda q: dict(q, tx=float(q.get("tx", 0.0)) - x0, ty=float(q.get("ty", 0.0)) - y0)   # grid starts at (x0, y0)
+    ident = shift(DEFAULT)
+    # depths: Round 1's planes, extended to round r's top and bottom
+    dz = g0["dz"] if g0["dz"] > 0 else 1.0
+    k0 = int(np.floor(cr[:, 2].min() / dz))
+    k1 = int(np.ceil(cr[:, 2].max() / dz))
+    k0, k1 = min(k0, 0), max(k1, v0.shape[0] - 1)
+    rows = {k: ([], [], []) for k in ("ref", "moved", "both")}
+    X, Y = np.meshgrid(xs, ys)
+    gap = np.full((1, W), np.nan)
+    for k in range(k0, k1 + 1):
+        z = k * dz
+        a = cut_plane(v0, g0, g0, ident, z, (H, W), step) if 0 <= k < v0.shape[0] else None
+        b = cut_plane(vr, gr, g0, shift(p), z, (H, W), step)
+        a = np.zeros((H, W), bool) if a is None else a > 0.5
+        b = np.zeros((H, W), bool) if b is None else b > 0.5
+        if not (a.any() or b.any()):
+            continue
+        for name, m in (("ref", a & ~b), ("moved", b & ~a), ("both", a & b)):
+            Z = np.where(m, z, np.nan)
+            rows[name][0].extend([X, gap])
+            rows[name][1].extend([Y, gap])
+            rows[name][2].extend([Z, gap])
+    return {name: tuple(np.vstack(v) if v else np.full((1, W), np.nan) for v in r3) for name, r3 in rows.items()}
+
+
 def inside_fraction(ref_pts: np.ndarray, g_r: dict, g_0: dict, p: dict) -> np.ndarray:
     """For points of Round 1's tissue (N, 3 µm) at many depths: whether each falls within round r's stack."""
     A, b = from_ref_affine(g_r, g_0, p)

@@ -52,11 +52,12 @@ how_to("""
 starts close to the right answer. This matters most when a sample was rotated, flipped or shifted between rounds.
 
 1. Pick a round under **Round to align**. Round 1 is always the reference and never moves.
-2. In the dark viewer, the picture underneath is **Round 1**; the see-through picture on top is the **selected
-   round** (its DAPI image, or its mask if there is no DAPI).
+2. In the dark viewer, **Round 1** is shown in **magenta** and the **selected round** (its DAPI image, or its mask
+   if there is no DAPI) in **cyan**. Where the two match, the tissue turns **white**. Untick **Magenta + cyan
+   colors** to see both in gray, with the selected round see-through on top.
 3. Use the sliders until the two pictures overlap: **Rotation** turns the top picture, **X / Y Translate** slides it
    left–right / up–down, **Image Scale** makes it bigger or smaller, **Flip Horizontal** mirrors it, and **Target
-   Opacity** makes it more or less see-through. You can also type exact numbers in the boxes.
+   Opacity** makes it fainter or stronger. You can also type exact numbers in the boxes.
 4. Zoom in with the **mouse wheel** and **drag** the picture to check the edges closely.
 5. Click **Apply Rough Alignment to Round**: every image of that round is moved in exactly the same way.
    Then pick the next round.
@@ -91,9 +92,9 @@ status_key = f"rough_status_{rnd}"
 value = rough_aligner(
     ref=ref, target=tgt, initial=initial, height=715, key=f"rough_{rnd}", default=None,
     token=f"{rnd}:{ch}:{tgt_path.stat().st_mtime}:{ref_path.stat().st_mtime}",
-    info=f"Reference (underneath): <b>Round {r0} · {ch0}</b><br>Moving (on top): <b>Round {rnd} · {ch}</b>"
+    info=f"Reference (magenta, underneath): <b>Round {r0} · {ch0}</b><br>Moving (cyan, on top): <b>Round {rnd} · {ch}</b>"
          "<ol style='color:#ccc; padding-left:18px; margin:8px 0 0 0'>"
-         "<li>Move the sliders until the two pictures overlap.</li>"
+         "<li>Move the sliders until the two pictures overlap (white where they match).</li>"
          "<li>Mouse wheel = zoom, drag = move the view.</li>"
          "<li>Click <b>Apply Rough Alignment to Round</b>.</li></ol>",
     status=st.session_state.get(status_key),
