@@ -21,6 +21,16 @@ Everything runs on your own computer. Your images are never uploaded anywhere.
 
 https://github.com/user-attachments/assets/6e29fea9-a44c-4f2a-ab2f-219cba0840b0
 
+**Video 1: 2D Tutorial on butterfly larval wing tissue.**
+
+Video created with the help of Anthropic's Claude.
+
+
+
+https://github.com/user-attachments/assets/97b26cd6-3b0c-424a-8ed7-10de6b467529
+
+**Video 1: 3D Tutorial on 14dpf larval brain tissue.**
+
 Video created with the help of Anthropic's Claude.
 
 
@@ -175,4 +185,4 @@ Tested on Windows 11 and Ubuntu 24.04.
 
 ## License
 
-MIT License, © 2026 Tirtha Das Banerjee
+MIT License, © 2026 ******
