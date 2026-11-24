@@ -15,6 +15,8 @@ Video created with the help of Google's Gemini.
 
 Everything runs on your own computer. Your images are never uploaded anywhere.
 
+Read the **RAMFISH_Studio_manual.pdf** for detailed operational guidance. 
+
 ---
 ##  📽️Video tutorial
 
