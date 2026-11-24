@@ -29,7 +29,7 @@ Video created with the help of Anthropic's Claude.
 
 https://github.com/user-attachments/assets/97b26cd6-3b0c-424a-8ed7-10de6b467529
 
-**Video 1: 3D Tutorial on 14dpf larval brain tissue.**
+**Video 2: 3D Tutorial on 14dpf larval brain tissue.**
 
 Video created with the help of Anthropic's Claude.
 
